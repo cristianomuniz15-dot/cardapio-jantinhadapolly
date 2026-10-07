@@ -284,6 +284,8 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 const CONFIG = {
   nome: "Jantinha da Polly",
   whatsapp: "5562991365036",
+  supabaseUrl: "",   /* ex.: https://abcdxyz.supabase.co */
+  supabaseKey: "",   /* chave anon public ou publishable */
   taxaEmbalagem: 2,      /* cobrada uma vez por pedido de retirada (sem mesa) */
   abre: 18, fecha: 23    /* horário de atendimento */
 };
@@ -297,19 +299,24 @@ const MEIA = (i, m) => [{ nome: "Inteira", preco: i }, { nome: "Meia", preco: m 
 const CALDO_ACOMP = "Acompanha cebolinha, queijo ralado, torresmo e torrada.";
 
 const MENU = [
-  { id: "jantinhas", nome: "Jantinhas", secoes: [
+  { id: "jantinhas", nome: "Jantinhas", setor: "cozinha", secoes: [
     { titulo: "Jantinhas", itens: [
       { id: "j1", nome: "Jantinha completa c/ espeto", desc: "Arroz, feijão tropeiro, mandioca, vinagrete e alface.", opcoes: MEIA(30, 28), espeto: true },
       { id: "j2", nome: "Jantinha s/ espeto", desc: "Arroz, feijão tropeiro, mandioca, vinagrete e alface.", preco: 20 },
       { id: "j3", nome: "Jantinha feijão de caldo c/ espeto", desc: "Arroz, feijão de caldo, mandioca, vinagrete e alface.", opcoes: MEIA(30, 28), espeto: true },
       { id: "j4", nome: "Jantinha strogonoff c/ espeto", desc: "Arroz, strogonoff, batata palha, vinagrete e alface.", opcoes: MEIA(35, 32), espeto: true },
       { id: "j5", nome: "Jantinha de strogonoff", desc: "Arroz, strogonoff, batata palha, vinagrete e alface.", opcoes: MEIA(28, 25) },
-      { id: "j6", nome: "Jantinha de picanha Premium", desc: "", preco: 42 },
-      { id: "j7", nome: "Espetinho c/ adicional de mandioca", desc: "Escolha o espeto abaixo.", preco: 18, espeto: true },
-      { id: "j8", nome: "Espetinho de picanha Premium c/ adicional de mandioca", desc: "", preco: 35 }
+      { id: "j6", nome: "Jantinha de picanha Premium", desc: "", preco: 42,
+        partes: [["churrasqueira", "Picanha premium", "p/ jantinha de picanha"]] },
+      { id: "j7", nome: "Espetinho c/ adicional de mandioca", desc: "Escolha o espeto abaixo.", preco: 18, espeto: true,
+        setor: "nenhum", notaEspeto: "c/ adicional de mandioca",
+        partes: [["cozinha", "Adicional de mandioca", "p/ espetinho"]] },
+      { id: "j8", nome: "Espetinho de picanha Premium c/ adicional de mandioca", desc: "", preco: 35,
+        setor: "nenhum",
+        partes: [["churrasqueira", "Picanha premium", "c/ adicional de mandioca"], ["cozinha", "Adicional de mandioca", "p/ espetinho"]] }
     ]}
   ]},
-  { id: "espetinhos", nome: "Espetinhos", secoes: [
+  { id: "espetinhos", nome: "Espetinhos", setor: "churrasqueira", secoes: [
     { titulo: "Espetinhos", nota: "Todos por R$ 15,00.", itens: TRAD.map((n, i) => ({ id: "t" + i, nome: n, desc: "", preco: 15 })) },
     { titulo: "Espetinhos nobres", itens: [
       { id: "n1", nome: "Carne de sol", desc: "", preco: 18 },
@@ -318,7 +325,7 @@ const MENU = [
       { id: "n4", nome: "Picanha premium", desc: "", preco: 32 }
     ]}
   ]},
-  { id: "porcoes", nome: "Porções", secoes: [
+  { id: "porcoes", nome: "Porções", setor: "cozinha", secoes: [
     { titulo: "Porções", itens: [
       { id: "p1", nome: "Batata frita simples", desc: "", opcoes: [{ nome: "250 g", preco: 20 }, { nome: "500 g", preco: 28 }] },
       { id: "p2", nome: "Batata frita especial", desc: "Com cheddar e bacon.", opcoes: [{ nome: "250 g", preco: 27 }, { nome: "500 g", preco: 38 }] },
@@ -334,7 +341,7 @@ const MENU = [
       { id: "p12", nome: "Panceta", desc: "", preco: 40 }
     ]}
   ]},
-  { id: "caldos", nome: "Caldos", secoes: [
+  { id: "caldos", nome: "Caldos", setor: "cozinha", secoes: [
     { titulo: "Caldos", nota: CALDO_ACOMP, itens: [
       { id: "c1", nome: "Caldo de frango", desc: "", opcoes: [{ nome: "Inteiro", preco: 20 }, { nome: "Meio", preco: 15 }] },
       { id: "c2", nome: "Caldo de feijão", desc: "", opcoes: [{ nome: "Inteiro", preco: 20 }, { nome: "Meio", preco: 15 }] },
@@ -342,7 +349,7 @@ const MENU = [
       { id: "c4", nome: "Adicionais de acompanhamento", desc: "Para turbinar o caldo.", preco: 15 }
     ]}
   ]},
-  { id: "bebidas", nome: "Bebidas", secoes: [
+  { id: "bebidas", nome: "Bebidas", setor: "bebidas", secoes: [
     { titulo: "Refrigerantes", itens: [
       ["Coca-Cola lata zero", 7], ["Coca-Cola lata", 7], ["Coca-Cola 600 ml", 8], ["Coca-Cola 600 ml zero", 8],
       ["Coca-Cola 1 L", 12], ["Coca-Cola 1 L zero", 12], ["Coca-Cola 2 L", 16], ["Fanta lata", 7], ["Fanta 2 L", 16],
@@ -371,7 +378,7 @@ const savedCart = store("jp_cart");
 if (savedCart && typeof savedCart === "object") state.cart = savedCart;
 
 const allItems = {};
-MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => allItems[i.id] = i)));
+MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
 
 /* chave do carrinho: id|opção|espeto (índice em TRAD ou vazio) */
 const keyOf = (id, opt, esp) => id + "|" + opt + "|" + (esp === undefined || esp === "" ? "" : esp);
@@ -558,6 +565,41 @@ function buildMessage() {
   return L.join("\n");
 }
 
+/* Divide cada item do pedido entre churrasqueira, cozinha e bebidas */
+function partesDe(item, o, e, q) {
+  const det = item.opcoes ? " (" + item.opcoes[o].nome + ")" : "";
+  const p = [];
+  if (item.setor !== "nenhum") p.push({ setor: item.setor, qtd: q, txt: item.nome + det });
+  if (item.espeto && e !== null) p.push({ setor: "churrasqueira", qtd: q, txt: TRAD[e], nota: item.notaEspeto || ("p/ " + item.nome + det) });
+  (item.partes || []).forEach(x => p.push({ setor: x[0], qtd: q, txt: x[1], nota: x[2] || "" }));
+  return p;
+}
+function orderData() {
+  const { taxa, t } = totals();
+  const itens = Object.entries(state.cart).map(([k, q]) => {
+    const { id, o, e } = parseKey(k); const it = allItems[id];
+    const d = [];
+    if (it.opcoes) d.push(it.opcoes[o].nome);
+    if (e !== null) d.push("espeto: " + TRAD[e]);
+    return { qtd: q, nome: it.nome, detalhe: d.join(", "), subtotal: q * priceOf(it, o), partes: partesDe(it, o, e, q) };
+  });
+  return {
+    cliente: $("fNome").value.trim(),
+    mesa: $("fMesa").value.trim() || null,
+    pagamento: $("fPag").value,
+    observacoes: $("fObs").value.trim() || null,
+    itens, taxa, total: t
+  };
+}
+function saveOrder() {
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey) return;
+  const h = { apikey: CONFIG.supabaseKey, "Content-Type": "application/json", Prefer: "return=minimal" };
+  if (CONFIG.supabaseKey.startsWith("eyJ")) h.Authorization = "Bearer " + CONFIG.supabaseKey;
+  try {
+    fetch(CONFIG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/pedidos", { method: "POST", keepalive: true, headers: h, body: JSON.stringify(orderData()) }).catch(() => {});
+  } catch (e) {}
+}
+
 function updateSendLink() {
   renderSums();
   $("send").href = "https://wa.me/" + CONFIG.whatsapp + "?text=" + encodeURIComponent(buildMessage());
@@ -593,6 +635,7 @@ $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sh
 $("send").addEventListener("click", (e) => {
   if (!validate()) { e.preventDefault(); return; }
   updateSendLink();
+  saveOrder();
   $("orderForm").hidden = true; $("sent").hidden = false;
 });
 $("copy").onclick = async () => {
