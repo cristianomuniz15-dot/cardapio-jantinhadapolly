@@ -157,6 +157,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 .sent p { margin: 0 0 10px; }
 
 /* Rodapé e painel do dono */
+.versao { margin: 0 0 6px; font-size: .78rem; opacity: .7; }
 .foot { max-width: 640px; margin: 0 auto; padding: 0 16px 130px; color: var(--muted); font-size: .9rem; }
 .linkbtn { background: none; border: 0; padding: 8px 0; text-decoration: underline; cursor: pointer; color: inherit; }
 .owner { max-width: 640px; margin: 0 auto; padding: 8px 16px 130px; }
@@ -208,6 +209,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 <main id="menu" class="noprint" aria-live="polite"></main>
 
 <div class="foot noprint">
+  <p class="versao" id="versao"></p>
   <button class="linkbtn" id="ownerToggle" type="button" aria-expanded="false" aria-controls="owner">Área do dono: QR Codes das mesas</button>
 </div>
 
@@ -259,17 +261,17 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
         <div class="row2">
           <div class="field">
             <label for="fNome">Seu nome</label>
-            <input id="fNome" autocomplete="given-name" maxlength="40">
+            <input id="fNome" name="apelido-do-pedido" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="40">
           </div>
           <div class="field">
             <label for="fMesa">Mesa</label>
-            <input id="fMesa" inputmode="numeric" maxlength="4" placeholder="Ex.: 5">
+            <input id="fMesa" name="numero-da-mesa" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="Ex.: 5">
             <div class="hint" id="mesaHint">Deixe vazio para retirada.</div>
           </div>
         </div>
         <div class="field" id="fPagWrap">
           <label for="fPag">Pagamento</label>
-          <select id="fPag">
+          <select id="fPag" autocomplete="off">
             <option>Pix</option>
             <option>Cartão de débito</option>
             <option>Cartão de crédito</option>
@@ -278,7 +280,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
         </div>
         <div class="field">
           <label for="fObs">Observações</label>
-          <textarea id="fObs" maxlength="240" placeholder="Ex.: carne ao ponto, sem pimenta"></textarea>
+          <textarea id="fObs" autocomplete="off" maxlength="240" placeholder="Ex.: carne ao ponto, sem pimenta"></textarea>
         </div>
       </div>
       <div class="sums">
@@ -742,11 +744,24 @@ $("genQr").onclick = () => {
 $("printQr").onclick = () => window.print();
 
 /* ============ INÍCIO ============ */
+const VERSAO = "12/10/2026 · 4";
+$("versao").textContent = "Versão " + VERSAO;
 $("waLink").href = "https://wa.me/" + CONFIG.whatsapp;
-const f = store("jp_form");
-const mesmaVisita = f && Date.now() - (f.t || 0) < PRAZO_FORM && (!urlMesa || !f.mesa || String(f.mesa) === String(urlMesa));
-if (mesmaVisita) { $("fNome").value = f.nome || ""; $("fMesa").value = f.mesa || ""; if (f.pag) $("fPag").value = f.pag; }
-if (urlMesa) { $("fMesa").value = urlMesa; $("mesaChip").textContent = "Você está na mesa " + urlMesa; $("mesaRow").hidden = false; }
+/* Preenche o formulário só com o que é desta visita. Roda também quando a página volta do histórico,
+   porque alguns navegadores devolvem sozinhos o texto antigo dos campos. */
+function aplicarForm() {
+  if ($("sheet").open) return;   /* nunca apaga o que a pessoa está digitando */
+  const f = store("jp_form");
+  const mesmaVisita = f && Date.now() - (f.t || 0) < PRAZO_FORM && (!urlMesa || !f.mesa || String(f.mesa) === String(urlMesa));
+  $("fNome").value = mesmaVisita ? (f.nome || "") : "";
+  $("fMesa").value = urlMesa || (mesmaVisita ? (f.mesa || "") : "");
+  if (mesmaVisita && f.pag) $("fPag").value = f.pag; else $("fPag").selectedIndex = 0;
+  if (!state.cart || !Object.keys(state.cart).length) $("fObs").value = "";
+}
+aplicarForm();
+window.addEventListener("pageshow", () => { aplicarForm(); renderAll(); });
+window.addEventListener("load", () => setTimeout(aplicarForm, 0));
+if (urlMesa) { $("mesaChip").textContent = "Você está na mesa " + urlMesa; $("mesaRow").hidden = false; }
 (function horario() {
   const h = new Date().getHours();
   $("closed").hidden = h >= CONFIG.abre && h < CONFIG.fecha;
