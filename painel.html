@@ -57,6 +57,28 @@ main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, mi
 .local { font-weight: 700; font-size: 1.1rem; margin-top: 2px; }
 .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; background: var(--cinza); color: #fff; }
 .badge.beb { margin-left: 6px; }
+.rel { grid-column: 1 / -1; }
+.rel h2 { font-family: var(--font-display); font-style: italic; font-size: 1.8rem; margin: 0 0 6px; }
+.rel-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.rel-custom { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 8px 0; }
+.rel-custom[hidden] { display: none; }
+.rel-custom label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 3px; }
+.rel-custom input { padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
+.rel-info { color: var(--muted); margin: 6px 0; min-height: 1.4em; }
+.rel-info.bad { color: #FF8A80; font-weight: 600; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.kpi small { color: var(--muted); display: block; }
+.kpi b { font-family: var(--font-display); font-style: italic; font-size: 1.7rem; }
+.kpi.main { border-left: 6px solid var(--ouro); }
+.tb-wrap { overflow-x: auto; margin: 6px 0 18px; }
+table.tb { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); }
+.tb th, .tb td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+.tb th { color: var(--muted); font-size: .85rem; font-weight: 600; }
+.tb .v { text-align: right; white-space: nowrap; }
+.tb .barra { height: 7px; background: var(--ouro); border-radius: 4px; margin-top: 6px; min-width: 2px; }
+.rel h3 { margin: 18px 0 0; font-size: 1.05rem; }
+.rel-nota { color: var(--muted); font-size: .88rem; max-width: 70ch; }
 .pay-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
 .pay-opts .btn { width: 100%; }
 .card.conta { border-left-color: var(--ouro); }
@@ -175,6 +197,11 @@ const CFG = {
 const NOME_LOJA = "Jantinha da Polly";
 /* Quem digita só o nome (ex.: maria) entra como maria@ + este domínio */
 const DOMINIO_LOGIN = "jantinhadapolly.com";
+/* Quem vê a aba "Relatórios" (valores de vendas). Use os nomes de usuário do caixa.
+   Deixe a lista vazia ( [] ) para todos os logins do caixa verem. */
+const DONOS = ["humberto", "pollyanna"];
+/* O dia de vendas começa a esta hora (assim os pedidos depois da meia-noite contam no dia anterior). */
+const HORA_VIRADA = 5;
 const SETORES = { churrasqueira: "Churrasqueira", cozinha: "Cozinha", bebidas: "Bebidas" };
 /* O perfil vem do login: e-mail churrasqueira@... ou cozinha@... abre a tela do setor;
    qualquer outro e-mail (ex.: caixa@...) abre a tela completa do caixa.
@@ -190,6 +217,7 @@ function paintView() {
   const nome = VIEW === "todos" ? "Caixa" : SETORES[VIEW];
   $("title").textContent = nome;
   document.title = nome + " — " + NOME_LOJA;
+  if (filter === "relatorio" && !(VIEW === "todos" && isDono())) filter = "andamento";
   try { autoPrint = localStorage.getItem(chaveAuto()) === "1"; } catch (e) { autoPrint = false; }
   paintToggles();
 }
@@ -330,10 +358,10 @@ const ATIVOS = ["novo", "preparo", "pronto"];
 function renderTabs() {
   const n = (f) => f === "contas" ? contasAbertas().length : orders.filter(o => doMeuSetor(o) && (f === "todos" ? true : f === "andamento" ? ATIVOS.includes(o.status) : o.status === f)).length;
   const el = $("tabs"); el.innerHTML = "";
-  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues"], ["todos", "Todos (24 h)"]]);
+  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues"], ["todos", "Todos (24 h)"]], (VIEW === "todos" && isDono()) ? [["relatorio", "Relatórios"]] : []);
   abas.forEach(([k, label]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "tab";
-    b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + " (" + n(k) + ")";
+    b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + (k === "relatorio" ? "" : " (" + n(k) + ")");
     b.onclick = () => { filter = k; render(); };
     el.appendChild(b);
   });
@@ -344,6 +372,7 @@ function render() {
   document.title = (abertos ? "(" + abertos + ") " : "") + (VIEW === "todos" ? "Caixa" : SETORES[VIEW]) + " — " + NOME_LOJA;
   const list = $("list"); list.innerHTML = "";
   if (filter === "contas" && VIEW === "todos") { renderContas(list); return; }
+  if (filter === "relatorio" && VIEW === "todos" && isDono()) { renderRelatorio(list); return; }
   const vis = orders.filter(o => doMeuSetor(o) && (filter === "todos" ? true : filter === "andamento" ? ATIVOS.includes(o.status) : o.status === filter));
   if (!vis.length) {
     const p = document.createElement("p"); p.className = "empty";
@@ -479,6 +508,193 @@ $("voiceBtn").onclick = () => {
   paintToggles();
 };
 paintToggles();
+
+/* ============ RELATÓRIOS DE VENDAS (donos) ============ */
+const isDono = () => { const u = (((session && session.user && session.user.email) || "").split("@")[0] || "").toLowerCase(); return DONOS.length === 0 || DONOS.includes(u); };
+const DIA_MS = 24 * 3600 * 1000;
+const FORMAS_REL = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheiro", "Misto"];
+const ABERTA = "Conta aberta (ainda não paga)";
+const REL = { k: "hoje", de: "", ate: "", node: null, data: null, ts: 0, carregando: false };
+const PERIODOS = [["hoje", "Hoje"], ["ontem", "Ontem"], ["semana", "Esta semana"], ["semanaPassada", "Semana passada"], ["mes", "Este mês"], ["mesPassado", "Mês passado"], ["ano", "Este ano"], ["custom", "Escolher datas"]];
+const fmtData = (d) => d.toLocaleDateString("pt-BR");
+const addDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const n2 = (v) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function inicioDoDia(d) { const x = new Date(d); x.setHours(HORA_VIRADA, 0, 0, 0); if (d < x) x.setDate(x.getDate() - 1); return x; }
+function periodoDe(k, de, ate) {
+  const hoje = inicioDoDia(new Date()), y = hoje.getFullYear(), m = hoje.getMonth();
+  const seg = addDias(hoje, -((hoje.getDay() + 6) % 7));   /* semana: segunda a domingo */
+  switch (k) {
+    case "hoje": return [hoje, addDias(hoje, 1)];
+    case "ontem": return [addDias(hoje, -1), hoje];
+    case "semana": return [seg, addDias(seg, 7)];
+    case "semanaPassada": return [addDias(seg, -7), seg];
+    case "mes": return [new Date(y, m, 1, HORA_VIRADA), new Date(y, m + 1, 1, HORA_VIRADA)];
+    case "mesPassado": return [new Date(y, m - 1, 1, HORA_VIRADA), new Date(y, m, 1, HORA_VIRADA)];
+    case "ano": return [new Date(y, 0, 1, HORA_VIRADA), new Date(y + 1, 0, 1, HORA_VIRADA)];
+    default: {
+      const a = (de || "").split("-").map(Number), b = (ate || "").split("-").map(Number);
+      if (a.length !== 3 || b.length !== 3 || a.some(isNaN) || b.some(isNaN)) return null;
+      return [new Date(a[0], a[1] - 1, a[2], HORA_VIRADA), new Date(b[0], b[1] - 1, b[2] + 1, HORA_VIRADA)];
+    }
+  }
+}
+function rotuloPeriodo(ini, fim) {
+  const ult = addDias(fim, -1);
+  return fmtData(ini) === fmtData(ult) ? fmtData(ini) + " (" + ini.toLocaleDateString("pt-BR", { weekday: "long" }) + ")" : fmtData(ini) + " a " + fmtData(ult);
+}
+async function buscarPedidos(ini, fim) {
+  const out = [], pag = 1000;
+  for (let off = 0; ; off += pag) {
+    const url = "/rest/v1/pedidos?select=criado_em,total,pagamento,status&status=neq.cancelado"
+      + "&criado_em=gte." + encodeURIComponent(ini.toISOString()) + "&criado_em=lt." + encodeURIComponent(fim.toISOString())
+      + "&order=criado_em.asc,id.asc&limit=" + pag + "&offset=" + off;
+    const r = await api(url);
+    if (!r.ok) throw new Error("falha");
+    const lote = await r.json(); out.push(...lote);
+    if (lote.length < pag) break;
+  }
+  return out;
+}
+const chaveDia = (iso) => { const d = new Date(new Date(iso).getTime() - HORA_VIRADA * 3600 * 1000); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+function resumir(rows, ini, fim) {
+  const forma = new Map(), grupo = new Map(); let total = 0, aberto = 0;
+  const porMes = (fim - ini) > 62 * DIA_MS;
+  rows.forEach(o => {
+    const v = Number(o.total) || 0; total += v;
+    const f = o.pagamento || ABERTA; if (!o.pagamento) aberto += v;
+    const a = forma.get(f) || { valor: 0, n: 0 }; a.valor += v; a.n++; forma.set(f, a);
+    const dk = chaveDia(o.criado_em), gk = porMes ? dk.slice(0, 7) : dk;
+    const g = grupo.get(gk) || { valor: 0, n: 0 }; g.valor += v; g.n++; grupo.set(gk, g);
+  });
+  const nomes = FORMAS_REL.concat([...forma.keys()].filter(k => !FORMAS_REL.includes(k) && k !== ABERTA), [ABERTA]);
+  const formas = nomes.filter(k => forma.has(k) || FORMAS_REL.slice(0, 4).includes(k)).map(k => ({ nome: k, valor: forma.has(k) ? forma.get(k).valor : 0, n: forma.has(k) ? forma.get(k).n : 0 }));
+  const grupos = [...grupo.keys()].sort().map(k => {
+    const [y, m, d] = k.split("-").map(Number); const g = grupo.get(k);
+    const rotulo = porMes ? new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+      : new Date(y, m - 1, d).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+    return { rotulo, valor: g.valor, n: g.n };
+  });
+  return { rotulo: rotuloPeriodo(ini, fim), total, aberto, pedidos: rows.length, formas, grupos, porMes, ini, fim };
+}
+async function carregarRelatorio() {
+  if (REL.carregando) return;
+  const p = periodoDe(REL.k, REL.de, REL.ate), info = $("relInfo");
+  if (!p) { info.className = "rel-info bad"; info.textContent = "Escolha a data inicial e a data final."; return; }
+  if (p[1] <= p[0]) { info.className = "rel-info bad"; info.textContent = "A data final precisa ser igual ou depois da inicial."; return; }
+  REL.carregando = true; info.className = "rel-info"; info.textContent = "Carregando vendas...";
+  try {
+    const rows = await buscarPedidos(p[0], p[1]);
+    REL.data = resumir(rows, p[0], p[1]); REL.ts = Date.now();
+    pintarRelatorio();
+  } catch (e) {
+    info.className = "rel-info bad"; info.textContent = "Não foi possível carregar o relatório. Confira a conexão e toque em Atualizar.";
+  }
+  REL.carregando = false;
+}
+function celula(tag, txt, cls) { const c = document.createElement(tag); if (cls) c.className = cls; c.textContent = txt; return c; }
+function tabela(cab, linhas) {
+  const wrap = mk("div", "tb-wrap"), t = mk("table", "tb"), th = document.createElement("thead"), tr = document.createElement("tr");
+  cab.forEach((h, i) => tr.appendChild(celula("th", h, i > 0 ? "v" : "")));
+  th.appendChild(tr); t.appendChild(th);
+  const tb = document.createElement("tbody"); linhas.forEach(l => tb.appendChild(l)); t.appendChild(tb); wrap.appendChild(t); return wrap;
+}
+function pintarRelatorio() {
+  const d = REL.data, info = $("relInfo"), body = $("relBody");
+  info.className = "rel-info"; info.textContent = "Período: " + d.rotulo + " · atualizado às " + hora(new Date());
+  body.innerHTML = "";
+  const kpis = mk("div", "kpis");
+  [["Total vendido", brl.format(d.total), "main"], ["Recebido (contas pagas)", brl.format(d.total - d.aberto), ""], ["A receber (contas abertas)", brl.format(d.aberto), ""], ["Pedidos", String(d.pedidos), ""]].forEach(([t, v, c]) => {
+    const k = mk("div", "kpi " + c); k.append(mk("small", "", t), mk("b", "", v)); kpis.appendChild(k);
+  });
+  body.appendChild(kpis);
+  body.appendChild(mk("h3", "", "Por forma de pagamento"));
+  const maxF = Math.max(1, ...d.formas.map(f => f.valor));
+  body.appendChild(tabela(["Forma", "Pedidos", "Valor", "%"], d.formas.map(f => {
+    const tr = document.createElement("tr");
+    const c1 = document.createElement("td"); c1.appendChild(document.createTextNode(f.nome));
+    const bar = mk("div", "barra"); bar.style.width = Math.round(f.valor / maxF * 100) + "%"; c1.appendChild(bar);
+    tr.append(c1, celula("td", String(f.n), "v"), celula("td", brl.format(f.valor), "v"), celula("td", (d.total ? (f.valor / d.total * 100) : 0).toFixed(1).replace(".", ",") + "%", "v"));
+    return tr;
+  })));
+  body.appendChild(mk("h3", "", d.porMes ? "Por mês" : "Por dia"));
+  const maxG = Math.max(1, ...d.grupos.map(g => g.valor));
+  body.appendChild(d.grupos.length ? tabela([d.porMes ? "Mês" : "Dia", "Pedidos", "Valor"], d.grupos.map(g => {
+    const tr = document.createElement("tr");
+    const c1 = document.createElement("td"); c1.appendChild(document.createTextNode(g.rotulo));
+    const bar = mk("div", "barra"); bar.style.width = Math.round(g.valor / maxG * 100) + "%"; c1.appendChild(bar);
+    tr.append(c1, celula("td", String(g.n), "v"), celula("td", brl.format(g.valor), "v"));
+    return tr;
+  })) : mk("p", "rel-nota", "Nenhuma venda neste período."));
+  body.appendChild(mk("p", "rel-nota", "Conta os pedidos não cancelados. A forma de pagamento aparece quando a conta é fechada (ou, na retirada, a escolhida no pedido); enquanto isso o valor fica em \"A receber\". \"Misto\" são contas pagas com mais de uma forma. O dia de vendas começa às " + String(HORA_VIRADA).padStart(2, "0") + ":00."));
+}
+function montarRelatorio() {
+  const n = mk("section", "rel");
+  n.appendChild(mk("h2", "", "Relatório de vendas"));
+  const bar = mk("div", "rel-bar"); bar.setAttribute("role", "group"); bar.setAttribute("aria-label", "Período");
+  PERIODOS.forEach(([k, label]) => {
+    const b = mk("button", "tab", label); b.type = "button"; b.dataset.k = k; b.setAttribute("aria-pressed", String(k === REL.k));
+    b.onclick = () => {
+      REL.k = k; [...bar.children].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      $("relCustom").hidden = k !== "custom";
+      if (k !== "custom") carregarRelatorio();
+    };
+    bar.appendChild(b);
+  });
+  n.appendChild(bar);
+  const cu = mk("div", "rel-custom"); cu.id = "relCustom"; cu.hidden = true;
+  const campo = (id, rot) => { const w = document.createElement("div"); const l = mk("label", "", rot); l.htmlFor = id; const i = document.createElement("input"); i.type = "date"; i.id = id; w.append(l, i); return w; };
+  const ok = mk("button", "btn gold small", "Ver período"); ok.type = "button";
+  ok.onclick = () => { REL.de = $("relDe").value; REL.ate = $("relAte").value; carregarRelatorio(); };
+  cu.append(campo("relDe", "De"), campo("relAte", "Até"), ok);
+  n.appendChild(cu);
+  const acts = mk("div", "rel-bar");
+  [["Atualizar", () => carregarRelatorio()], ["Baixar planilha (CSV)", baixarCSV], ["Imprimir resumo", imprimirResumo]].forEach(([t, fn]) => { const b = mk("button", "btn ghost small", t); b.type = "button"; b.onclick = fn; acts.appendChild(b); });
+  n.appendChild(acts);
+  const info = mk("p", "rel-info"); info.id = "relInfo"; info.setAttribute("role", "status"); n.appendChild(info);
+  const body = mk("div", ""); body.id = "relBody"; n.appendChild(body);
+  REL.node = n;
+}
+function renderRelatorio(list) {
+  const primeira = !REL.node;
+  if (primeira) montarRelatorio();
+  list.appendChild(REL.node);
+  const idade = Date.now() - REL.ts;
+  if (primeira || !REL.data || (REL.k === "hoje" && idade > 30000) || idade > 300000) { if (REL.k !== "custom" || REL.data) carregarRelatorio(); }
+}
+function baixarCSV() {
+  const d = REL.data; if (!d) return;
+  const v = (x) => x.toFixed(2).replace(".", ",");
+  const L = [["Relatório de vendas", NOME_LOJA], ["Período", d.rotulo], [], ["Resumo"],
+    ["Total vendido (R$)", v(d.total)], ["Recebido (R$)", v(d.total - d.aberto)], ["A receber - contas abertas (R$)", v(d.aberto)], ["Pedidos", d.pedidos], [],
+    ["Forma de pagamento", "Pedidos", "Valor (R$)", "%"]]
+    .concat(d.formas.map(f => [f.nome, f.n, v(f.valor), (d.total ? f.valor / d.total * 100 : 0).toFixed(1).replace(".", ",")]))
+    .concat([[], [d.porMes ? "Mês" : "Dia", "Pedidos", "Valor (R$)"]], d.grupos.map(g => [g.rotulo, g.n, v(g.valor)]));
+  const csv = "\ufeff" + L.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(";")).join("\r\n");
+  const iso = (x) => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = "vendas_" + iso(d.ini) + "_a_" + iso(addDias(d.fim, -1)) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function imprimirResumo() {
+  const d = REL.data; if (!d) return;
+  const t = $("ticket"); t.innerHTML = "";
+  const line = (cls, txt) => t.appendChild(mk("div", cls, txt));
+  const hr = () => t.appendChild(document.createElement("hr"));
+  const row = (cls, a, b) => { const r = mk("div", "row " + cls); r.append(mk("span", "", a), mk("span", "", b)); t.appendChild(r); };
+  line("c big", NOME_LOJA); line("c b", "RELATÓRIO DE VENDAS"); line("c", d.rotulo);
+  line("c", "Emitido " + new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  hr();
+  row("big", "TOTAL", brl.format(d.total));
+  row("", "Recebido", brl.format(d.total - d.aberto));
+  row("", "A receber", brl.format(d.aberto));
+  row("", "Pedidos", String(d.pedidos));
+  hr(); line("b", "POR FORMA DE PAGAMENTO");
+  d.formas.forEach(f => row("", f.nome === ABERTA ? "A receber" : f.nome, brl.format(f.valor)));
+  hr(); line("b", d.porMes ? "POR MÊS" : "POR DIA");
+  d.grupos.forEach(g => row("", g.rotulo, brl.format(g.valor)));
+  window.print();
+}
 
 /* ============ CONTAS DA MESA: fechar conta e imprimir conferência ============ */
 function renderContas(list) {
