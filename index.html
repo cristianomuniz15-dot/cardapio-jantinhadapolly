@@ -329,7 +329,15 @@ const state = { q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: fal
 function store(key, val) {
   try { if (val === undefined) { const v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; }
 }
-/* O carrinho só é lembrado por algumas horas (o tempo de uma visita) e é apagado assim que o pedido é enviado. */
+/* Cada vez que o link é aberto, o pedido começa do ZERO. Só atualizar a página (F5) ou voltar pelo histórico
+   mantém o que estava sendo montado, para ninguém perder o pedido sem querer. O carrinho também é apagado ao enviar. */
+function tipoNavegacao() {
+  try { const e = performance.getEntriesByType("navigation")[0]; if (e && e.type) return e.type; } catch (e) {}
+  try { const t = performance.navigation && performance.navigation.type; if (t === 1) return "reload"; if (t === 2) return "back_forward"; } catch (e) {}
+  return "navigate";
+}
+const NOVA_VISITA = tipoNavegacao() === "navigate";
+if (NOVA_VISITA) { store("jp_cart", null); store("jp_form", null); }
 const PRAZO_CARRINHO = 3 * 3600 * 1000, PRAZO_FORM = 3 * 3600 * 1000;
 function guardarCarrinho() { store("jp_cart", { t: Date.now(), cart: state.cart }); }
 const savedCart = store("jp_cart");
@@ -744,7 +752,7 @@ $("genQr").onclick = () => {
 $("printQr").onclick = () => window.print();
 
 /* ============ INÍCIO ============ */
-const VERSAO = "12/10/2026 · 4";
+const VERSAO = "12/10/2026 · 5";
 $("versao").textContent = "Versão " + VERSAO;
 $("waLink").href = "https://wa.me/" + CONFIG.whatsapp;
 /* Preenche o formulário só com o que é desta visita. Roda também quando a página volta do histórico,
