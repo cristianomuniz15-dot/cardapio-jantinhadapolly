@@ -64,6 +64,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* Abas */
 .tabs-wrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
 .tabs { max-width: 640px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; }
+.tabs[hidden] { display: none; }
+.busca { max-width: 640px; margin: 0 auto; padding: 10px 16px 0; display: flex; gap: 8px; align-items: center; }
+.busca .campo { position: relative; flex: 1; }
+.busca svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+.busca input { width: 100%; padding: 11px 14px 11px 40px; border: 2px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 1rem; }
+.busca input:focus { border-color: var(--ouro); outline: none; }
+.busca button { border: 0; background: transparent; color: var(--ink); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 10px 6px; min-height: 44px; }
+.busca button[hidden] { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sem-resultado { color: var(--muted); padding: 28px 0; text-align: center; }
+.tabs-wrap.com-busca .tabs { padding-top: 8px; }
 .tab {
   flex: 0 0 auto; border: 2px solid var(--ouro); background: transparent; color: var(--ink);
   padding: 8px 18px; border-radius: 999px; font-weight: 700; cursor: pointer; white-space: nowrap;
@@ -182,6 +193,14 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 <div class="mesa-row noprint" id="mesaRow" hidden><span class="mesa-chip" id="mesaChip"></span></div>
 
 <div class="tabs-wrap noprint">
+  <div class="busca" role="search">
+    <label class="sr" for="busca">Buscar no cardápio</label>
+    <div class="campo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="busca" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Buscar: picanha, suco, caldo, meia...">
+    </div>
+    <button id="buscaLimpar" type="button" hidden>Limpar</button>
+  </div>
   <div class="tabs" role="tablist" aria-label="Categorias do cardápio" id="tabs"></div>
 </div>
 
@@ -301,7 +320,7 @@ const CONFIG = {
 /* ============ ESTADO ============ */
 const $ = (id) => document.getElementById(id);
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const state = { tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, recap: null, lastHref: "" };
+const state = { q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, recap: null, lastHref: "" };
 
 function store(key, val) {
   try { if (val === undefined) { const v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; }
@@ -366,10 +385,49 @@ function renderTabs() {
   });
 }
 
+/* ---- busca: ignora acentos e maiúsculas; todas as palavras digitadas precisam aparecer (nome, descrição, tamanho ou tipo) ---- */
+const sem = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+/* só nomes gerais do tipo; "suco", "cerveja", "refrigerante" já são achados pelo título de cada seção */
+const BUSCA_EXTRA = { jantinhas: "jantinha jantinhas prato refeicao", espetinhos: "espeto espetos espetinho espetinhos churrasco", porcoes: "porcao porcoes petisco", caldos: "caldo caldos sopa", bebidas: "bebida bebidas" };
+function resultadosBusca(q) {
+  const termos = sem(q).split(/\s+/).filter(Boolean), out = [];
+  MENU.forEach(c => {
+    const grupos = [];
+    c.secoes.forEach(sec => {
+      const itens = sec.itens.filter(it => {
+        const h = sem([it.nome, it.desc, c.nome, sec.titulo, BUSCA_EXTRA[c.id], (it.opcoes || []).map(o => o.nome).join(" ")].join(" "));
+        return termos.every(t => h.includes(t));
+      });
+      if (itens.length) grupos.push({ titulo: sec.titulo, itens });
+    });
+    if (grupos.length) out.push({ cat: c, grupos });
+  });
+  return out;
+}
+function renderBusca() {
+  const main = $("menu"); main.innerHTML = "";
+  main.setAttribute("role", "region"); main.removeAttribute("aria-labelledby"); main.setAttribute("aria-label", "Resultados da busca");
+  const q = state.q.trim(), res = resultadosBusca(q);
+  const total = res.reduce((a, r) => a + r.grupos.reduce((b, g) => b + g.itens.length, 0), 0);
+  const p = document.createElement("p");
+  if (!total) {
+    p.className = "sem-resultado"; p.textContent = "Nenhum item encontrado para “" + q + "”. Tente outra palavra, como picanha, suco ou caldo.";
+    main.appendChild(p); return;
+  }
+  p.className = "sec-note"; p.textContent = total + (total > 1 ? " itens encontrados" : " item encontrado") + " para “" + q + "”";
+  main.appendChild(p);
+  res.forEach(r => r.grupos.forEach(g => {
+    const h = document.createElement("h2"); h.className = "sec-title"; h.textContent = r.cat.nome + (g.titulo !== r.cat.nome ? " · " + g.titulo : ""); main.appendChild(h);
+    const ul = document.createElement("ul"); ul.className = "items";
+    g.itens.forEach(item => ul.appendChild(renderItem(item)));
+    main.appendChild(ul);
+  }));
+}
 function renderMenu() {
+  if (state.q.trim()) { renderBusca(); return; }
   const cat = MENU.find(c => c.id === state.tab);
   const main = $("menu"); main.innerHTML = "";
-  main.setAttribute("role", "tabpanel"); main.setAttribute("aria-labelledby", "tab-" + cat.id);
+  main.removeAttribute("aria-label"); main.setAttribute("role", "tabpanel"); main.setAttribute("aria-labelledby", "tab-" + cat.id);
   cat.secoes.forEach(sec => {
     const h = document.createElement("h2"); h.className = "sec-title"; h.textContent = sec.titulo; main.appendChild(h);
     if (sec.nota) { const p = document.createElement("p"); p.className = "sec-note"; p.textContent = sec.nota; main.appendChild(p); }
@@ -565,6 +623,16 @@ function renderAll() {
 }
 
 /* ============ EVENTOS ============ */
+function aplicarBusca() {
+  state.q = $("busca").value;
+  const ativa = !!state.q.trim();
+  $("buscaLimpar").hidden = !state.q;
+  $("tabs").hidden = ativa;
+  renderAll();
+}
+$("busca").addEventListener("input", aplicarBusca);
+$("busca").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("busca").blur(); } });
+$("buscaLimpar").onclick = () => { $("busca").value = ""; aplicarBusca(); $("busca").focus(); };
 $("openCart").onclick = () => { $("sent").hidden = true; renderLines(); updateSendLink(); $("sheet").showModal(); };
 $("closeSheet").onclick = () => $("sheet").close();
 $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").close(); });

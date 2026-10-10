@@ -57,6 +57,16 @@ main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, mi
 .local { font-weight: 700; font-size: 1.1rem; margin-top: 2px; }
 .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; background: var(--cinza); color: #fff; }
 .badge.beb { margin-left: 6px; }
+.pwd { position: relative; }
+#login .pwd input, .pwd input { padding-right: 96px; }
+.pwd .ver { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--ouro); font-weight: 700; cursor: pointer; padding: 8px 10px; border-radius: 8px; }
+.campo-s { margin-bottom: 10px; }
+.campo-s label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 4px; }
+.campo-s input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
+.pwd-dicas { color: var(--muted); font-size: .9rem; margin: 4px 0 10px; padding-left: 18px; }
+.pwd-linha { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.ok-msg { color: #7BE0A3; font-weight: 600; min-height: 1.3em; margin: 6px 0 0; }
+.pwd-sug { background: var(--bg); border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; font-family: ui-monospace, Consolas, monospace; word-break: break-all; margin: 6px 0; }
 .rel { grid-column: 1 / -1; }
 .rel h2 { font-family: var(--font-display); font-style: italic; font-size: 1.8rem; margin: 0 0 6px; }
 .rel-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
@@ -133,7 +143,9 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
   <p style="color:var(--muted);margin:6px 0 0">Jantinha da Polly — acesso da equipe</p>
   <form id="loginForm">
     <div><label for="email">Usuário</label><input id="email" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Ex.: maria" required></div>
-    <div><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password" required></div>
+    <div><label for="senha">Senha</label>
+      <div class="pwd"><input id="senha" type="password" autocomplete="current-password" required>
+        <button class="ver" id="senhaVer" type="button" aria-pressed="false" aria-controls="senha">Mostrar</button></div></div>
     <button class="btn main" type="submit">Entrar</button>
     <p class="err" id="loginErr" role="alert"></p>
   </form>
@@ -149,10 +161,35 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn ghost small" id="voiceBtn" type="button" aria-pressed="false">Ler pedidos em voz alta</button>
     <button class="btn ghost small" id="soundBtn" type="button" aria-pressed="true" title="Toque para desligar ou ligar o aviso sonoro de pedido novo">Som ativado</button>
     <button class="btn ghost small" id="refreshBtn" type="button">Atualizar</button>
+    <button class="btn ghost small" id="pwdBtn" type="button" hidden>Trocar senha</button>
     <button class="btn ghost small" id="logoutBtn" type="button">Sair</button>
   </header>
   <main id="list" aria-live="polite"></main>
 </div>
+
+<dialog id="pwdDlg" aria-labelledby="pwdTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="pwdTitle">Trocar minha senha</h2>
+      <button class="btn ghost small" id="pwdCancelar" type="button">Cancelar</button>
+    </div>
+    <p class="hora" id="pwdUser"></p>
+    <div class="campo-s"><label for="pwdAtual">Senha atual</label><div class="pwd"><input id="pwdAtual" type="password" autocomplete="current-password"></div></div>
+    <div class="campo-s"><label for="pwdNova">Nova senha</label><div class="pwd"><input id="pwdNova" type="password" autocomplete="new-password"></div></div>
+    <div class="campo-s"><label for="pwdConf">Repita a nova senha</label><div class="pwd"><input id="pwdConf" type="password" autocomplete="new-password"></div></div>
+    <div class="pwd-linha">
+      <button class="btn ghost small" id="pwdVer" type="button" aria-pressed="false">Mostrar senhas</button>
+      <button class="btn ghost small" id="pwdSug" type="button">Sugerir senha</button>
+    </div>
+    <ul class="pwd-dicas">
+      <li>Use pelo menos 8 caracteres, misturando letras e números.</li>
+      <li>Evite nome, data de nascimento e senhas que você usa em outros lugares.</li>
+      <li>Anote a nova senha num lugar seguro antes de salvar.</li>
+    </ul>
+    <p class="err" id="pwdMsg" role="alert"></p>
+    <button class="btn green" id="pwdSalvar" type="button">Salvar nova senha</button>
+  </div>
+</dialog>
 
 <dialog id="payDlg" aria-labelledby="payTitle">
   <div class="dlg">
@@ -326,6 +363,7 @@ async function api(path, opts = {}, retry = true) {
 }
 function logout() {
   saveSession(null); clearInterval(timer); seen = null; orders = [];
+  esconderSenhaLogin(); $("senha").value = "";
   $("app").hidden = true; $("login").hidden = false; VIEW = "todos"; document.title = "Painel — " + NOME_LOJA;
 }
 
@@ -1053,9 +1091,78 @@ $("soundBtn").onclick = () => {
   paintSom();
 };
 
+/* ============ SENHA: ver/ocultar, trocar e sugerir ============ */
+function mostrarSenhas(ver, btn, inputs) {
+  btn.setAttribute("aria-pressed", String(ver));
+  inputs.forEach(i => { i.type = ver ? "text" : "password"; });
+}
+const ligarVer = (btn, inputs, rotulos) => { btn.onclick = () => { const ver = btn.getAttribute("aria-pressed") !== "true"; mostrarSenhas(ver, btn, inputs); btn.textContent = ver ? rotulos[1] : rotulos[0]; }; };
+ligarVer($("senhaVer"), [$("senha")], ["Mostrar", "Ocultar"]);
+ligarVer($("pwdVer"), [$("pwdAtual"), $("pwdNova"), $("pwdConf")], ["Mostrar senhas", "Ocultar senhas"]);
+function esconderSenhaLogin() { mostrarSenhas(false, $("senhaVer"), [$("senha")]); $("senhaVer").textContent = "Mostrar"; }
+
+const PALAVRAS = ["brasa", "espeto", "caldo", "tempero", "picanha", "jantinha", "fogo", "farofa", "limao", "pimenta", "mandioca", "torresmo", "feijao", "vinagrete", "linguica", "costela", "alho", "cebola", "coentro", "salsa", "queijo", "coalho", "bacon", "cupim", "frango", "carne", "arroz", "tropeiro", "batata", "tomate", "alface", "cerveja", "suco", "laranja", "acerola", "maracuja", "abacaxi", "morango", "tamarindo", "cachaca"];
+function sugerirSenha() {
+  const r = new Uint32Array(5);
+  if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(r); else for (let i = 0; i < r.length; i++) r[i] = Math.floor(Math.random() * 4294967295);
+  const p = (i) => PALAVRAS[r[i] % PALAVRAS.length];
+  return p(0).charAt(0).toUpperCase() + p(0).slice(1) + "-" + p(1) + "-" + p(2) + "-" + p(3) + "-" + String(100 + (r[4] % 900));
+}
+class ErroSenha extends Error {}
+function erroSenha(j) {
+  const cod = String(j.error_code || j.code || ""), msg = String(j.msg || j.message || j.error_description || "");
+  if (cod === "same_password" || /different from the old/i.test(msg)) return "A nova senha precisa ser diferente da atual.";
+  if (cod === "weak_password" || /at least|weak|characters/i.test(msg)) return "Senha fraca ou curta demais. Use pelo menos 8 caracteres, com letras e números.";
+  if (/reauth/i.test(cod + msg)) return "Por segurança, saia do painel, entre de novo e tente trocar a senha.";
+  return "Não foi possível trocar a senha. Tente de novo.";
+}
+function abrirTrocaSenha() {
+  ["pwdAtual", "pwdNova", "pwdConf"].forEach(id => { $(id).value = ""; });
+  mostrarSenhas(false, $("pwdVer"), [$("pwdAtual"), $("pwdNova"), $("pwdConf")]); $("pwdVer").textContent = "Mostrar senhas";
+  $("pwdMsg").className = "err"; $("pwdMsg").textContent = ""; $("pwdSalvar").disabled = false;
+  $("pwdUser").textContent = "Usuário: " + (((session && session.user && session.user.email) || "").split("@")[0]);
+  $("pwdDlg").showModal(); $("pwdAtual").focus();
+}
+async function salvarNovaSenha() {
+  const atual = $("pwdAtual").value, nova = $("pwdNova").value, conf = $("pwdConf").value, msg = $("pwdMsg");
+  const erro = (t) => { msg.className = "err"; msg.textContent = t; };
+  const usuario = (((session && session.user && session.user.email) || "").split("@")[0] || "").toLowerCase();
+  if (!atual) return erro("Digite a senha atual.");
+  if (nova.length < 8) return erro("A nova senha precisa ter pelo menos 8 caracteres.");
+  if (nova !== conf) return erro("A confirmação não é igual à nova senha.");
+  if (nova === atual) return erro("A nova senha precisa ser diferente da atual.");
+  if (usuario.length >= 3 && nova.toLowerCase().includes(usuario)) return erro("Não use o seu nome de usuário dentro da senha.");
+  $("pwdSalvar").disabled = true; msg.className = "hora"; msg.textContent = "Salvando...";
+  try {
+    /* confirma a senha atual (e renova o login) antes de trocar */
+    const r1 = await fetch(CFG.url + "/auth/v1/token?grant_type=password", { method: "POST", headers: authHeaders(), body: JSON.stringify({ email: session.user.email, password: atual }) });
+    if (!r1.ok) throw new ErroSenha("A senha atual está incorreta.");
+    const nova_sessao = await r1.json();
+    const r2 = await fetch(CFG.url + "/auth/v1/user", { method: "PUT", headers: { apikey: CFG.key, Authorization: "Bearer " + nova_sessao.access_token, "Content-Type": "application/json" }, body: JSON.stringify({ password: nova }) });
+    if (!r2.ok) { let j = {}; try { j = await r2.json(); } catch (e) {} throw new ErroSenha(erroSenha(j)); }
+    saveSession(nova_sessao);
+    ["pwdAtual", "pwdNova", "pwdConf"].forEach(id => { $(id).value = ""; });
+    msg.className = "ok-msg"; msg.textContent = "Senha trocada com sucesso! Use a nova senha na próxima vez que entrar.";
+    setTimeout(() => { if ($("pwdDlg").open) $("pwdDlg").close(); }, 2500);
+    return;
+  } catch (e) {
+    erro(e instanceof ErroSenha ? e.message : "Não foi possível trocar a senha. Confira a conexão e tente de novo.");
+  }
+  $("pwdSalvar").disabled = false;
+}
+$("pwdBtn").onclick = abrirTrocaSenha;
+$("pwdCancelar").onclick = () => $("pwdDlg").close();
+$("pwdSalvar").onclick = salvarNovaSenha;
+$("pwdSug").onclick = () => {
+  const s = sugerirSenha(); $("pwdNova").value = s; $("pwdConf").value = s;
+  mostrarSenhas(true, $("pwdVer"), [$("pwdAtual"), $("pwdNova"), $("pwdConf")]); $("pwdVer").textContent = "Ocultar senhas";
+  $("pwdMsg").className = "ok-msg"; $("pwdMsg").textContent = "Sugestão: " + s + "  (anote antes de salvar)";
+};
+
 /* ============ INÍCIO ============ */
 function enter() {
   paintView();
+  $("pwdBtn").hidden = VIEW !== "todos";   /* churrasqueira e cozinha: a senha é trocada pelo dono */
   carregarSom(); prepararAudio();
   $("login").hidden = true; $("app").hidden = false;
   load(); clearInterval(timer); timer = setInterval(load, 6000);
@@ -1066,7 +1173,8 @@ $("loginForm").addEventListener("submit", async (e) => {
   if (!CFG.url || !CFG.key) { $("loginErr").textContent = "Falta configurar a URL e a chave do Supabase no arquivo painel.html."; return; }
   try {
     const u = $("email").value.trim().toLowerCase().replace(/\s+/g, "");
-    await signIn(u.includes("@") ? u : u + "@" + DOMINIO_LOGIN, $("senha").value); enter();
+    await signIn(u.includes("@") ? u : u + "@" + DOMINIO_LOGIN, $("senha").value);
+    $("senha").value = ""; esconderSenhaLogin(); enter();   /* não deixa a senha na tela */
   }
   catch (err) { $("loginErr").textContent = err.message || "Não foi possível entrar. Verifique a conexão."; }
 });
