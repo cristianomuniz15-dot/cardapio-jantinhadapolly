@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caixa — Jantinha da Polly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@1,700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0E0B0A; --surface: #1A1513; --ink: #F6F1EA; --muted: #B3A89E; --line: #2E2623;
+  --brasa: #E0231C; --ouro: #FFD21F; --verde: #1FA855; --cinza: #6B625B;
+  --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.4; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--ouro); outline-offset: 2px; }
+h1 { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 2rem; margin: 0; }
+
+.btn { border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 700; cursor: pointer; min-height: 42px; }
+.btn.main { background: var(--brasa); color: #fff; }
+.btn.gold { background: var(--ouro); color: #1E1500; }
+.btn.green { background: var(--verde); color: #fff; }
+.btn.ghost { background: transparent; border: 2px solid var(--line); color: var(--ink); }
+.btn.small { padding: 6px 12px; min-height: 36px; font-size: .92rem; }
+.btn.ghost[aria-pressed="true"] { border-color: var(--verde); color: var(--verde); }
+
+#login { max-width: 380px; margin: 12vh auto 0; padding: 24px; }
+#login form { display: grid; gap: 12px; margin-top: 16px; }
+#login label { font-weight: 600; font-size: .95rem; display: block; margin-bottom: 4px; }
+#login input { width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); }
+.err { color: #FF8A80; font-weight: 600; min-height: 1.3em; margin: 0; }
+
+header.top { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+header.top .grow { flex: 1; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab { border: 2px solid var(--ouro); background: transparent; border-radius: 999px; padding: 6px 16px; font-weight: 700; cursor: pointer; }
+.tab[aria-pressed="true"] { background: var(--ouro); color: #1E1500; }
+#status { color: var(--muted); font-size: .9rem; }
+#status.bad { color: #FF8A80; font-weight: 600; }
+
+main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; align-items: start; }
+.empty { color: var(--muted); grid-column: 1 / -1; text-align: center; padding: 40px 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--cinza); border-radius: 12px; padding: 14px; }
+.card.s-novo { border-left-color: var(--brasa); }
+.card.s-preparo { border-left-color: var(--ouro); }
+.card.s-pronto { border-left-color: var(--verde); }
+.card.s-entregue, .card.s-cancelado { opacity: .65; }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.num { font-family: var(--font-display); font-style: italic; font-size: 1.6rem; font-weight: 700; }
+.hora { color: var(--muted); font-weight: 600; }
+.local { font-weight: 700; font-size: 1.1rem; margin-top: 2px; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; background: var(--cinza); color: #fff; }
+.badge.adic { background: #fff; color: #B3150F; margin-left: 6px; }
+.badge.novo { background: var(--brasa); }
+.badge.preparo { background: var(--ouro); color: #1E1500; }
+.badge.pronto { background: var(--verde); }
+ul.itens { list-style: none; margin: 10px 0; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+ul.itens li { padding: 3px 0; }
+ul.itens small { color: var(--muted); display: block; }
+.obs { background: var(--bg); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; color: var(--ouro); font-weight: 600; }
+.tot { display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; margin-bottom: 10px; }
+.tot small { color: var(--muted); font-weight: 500; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; width: min(640px, 96vw); max-height: 92vh; padding: 0; overflow: auto; }
+dialog::backdrop { background: rgba(0, 0, 0, .72); }
+.dlg { padding: 16px; }
+.dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.dlg-head h2 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+.dlg .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
+.sec { font-weight: 700; margin: 12px 0 2px; color: var(--ouro); }
+.mi { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.mi small { color: var(--muted); display: block; }
+.mi .ctl { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+.mi select { flex: 1 1 140px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
+.stp { display: inline-flex; align-items: center; border: 2px solid var(--ouro); border-radius: 10px; overflow: hidden; }
+.stp button { width: 38px; height: 36px; border: 0; background: transparent; color: var(--ouro); font-size: 1.3rem; font-weight: 700; cursor: pointer; }
+.stp output { min-width: 26px; text-align: center; font-weight: 700; }
+.dlg-foot { position: sticky; bottom: 0; background: var(--surface); padding-top: 10px; margin-top: 8px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.dlg-foot input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
+#ticket { display: none; }
+@media print {
+  @page { size: 80mm auto; margin: 3mm; }
+  body { background: #fff; color: #000; }
+  #login, #app, dialog { display: none !important; }
+  #ticket { display: block; width: 74mm; font-family: "Courier New", monospace; font-size: 12px; line-height: 1.35; color: #000; }
+  #ticket .c { text-align: center; }
+  #ticket .b { font-weight: 700; }
+  #ticket .big { font-size: 16px; font-weight: 700; }
+  #ticket hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
+  #ticket .row { display: flex; justify-content: space-between; gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<section id="login">
+  <h1 id="loginTitle">Caixa</h1>
+  <p style="color:var(--muted);margin:6px 0 0">Jantinha da Polly — acesso da equipe</p>
+  <form id="loginForm">
+    <div><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required></div>
+    <div><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password" required></div>
+    <button class="btn main" type="submit">Entrar</button>
+    <p class="err" id="loginErr" role="alert"></p>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header class="top">
+    <h1 id="title">Caixa</h1>
+    <div class="tabs" id="tabs"></div>
+    <span class="grow"></span>
+    <span id="status" role="status"></span>
+    <button class="btn ghost small" id="autoBtn" type="button" aria-pressed="false">Impressão automática: desligada</button>
+    <button class="btn ghost small" id="voiceBtn" type="button" aria-pressed="false">Ler pedidos em voz alta</button>
+    <button class="btn ghost small" id="soundBtn" type="button" aria-pressed="false">Ativar som</button>
+    <button class="btn ghost small" id="refreshBtn" type="button">Atualizar</button>
+    <button class="btn ghost small" id="logoutBtn" type="button">Sair</button>
+  </header>
+  <main id="list" aria-live="polite"></main>
+</div>
+
+<dialog id="addDlg" aria-labelledby="addTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="addTitle">Adicionar itens</h2>
+      <button class="btn ghost small" id="addClose" type="button">Fechar</button>
+    </div>
+    <div class="tabs" id="addTabs"></div>
+    <div id="addMenu"></div>
+    <div class="dlg-foot">
+      <input id="addObs" maxlength="240" placeholder="Observação (opcional)" aria-label="Observação do adicional">
+      <div class="tot"><span>Total do adicional</span><span id="addTotal">R$ 0,00</span></div>
+      <p class="err" id="addErr" role="alert"></p>
+      <button class="btn green" id="addSend" type="button">Enviar adicional</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="ticket" aria-hidden="true"></div>
+
+<script src="cardapio-dados.js"></script>
+<script>
+/* ============ CONFIGURAÇÃO (mesmos dados do index.html) ============ */
+const CFG = {
+  url: "",   /* ex.: https://abcdxyz.supabase.co */
+  key: ""    /* chave anon public ou publishable */
+};
+const NOME_LOJA = "Jantinha da Polly";
+/* Visões: caixa.html (caixa, completo) · caixa.html?setor=churrasqueira · caixa.html?setor=cozinha
+   (churrasqueira.html e cozinha.html apenas abrem estas visões) */
+const SETORES = { churrasqueira: "Churrasqueira", cozinha: "Cozinha", bebidas: "Bebidas" };
+const VIEW = (() => { const v = (new URLSearchParams(location.search).get("setor") || "").toLowerCase(); return (v === "churrasqueira" || v === "cozinha") ? v : "todos"; })();
+function partesOf(o) {
+  const out = [];
+  (o.itens || []).forEach(i => {
+    if (Array.isArray(i.partes) && i.partes.length) i.partes.forEach(p => out.push(p));
+    else out.push({ setor: "cozinha", qtd: i.qtd, txt: i.nome + (i.detalhe ? " (" + i.detalhe + ")" : ""), nota: "" });
+  });
+  return out;
+}
+const isAdic = (o) => /^ADICIONAL/i.test(o.observacoes || "");
+const obsTxt = (o) => (o.observacoes || "").replace(/^ADICIONAL\s*(—\s*)?/i, "").trim();
+function contaMesa(o) {
+  const k = (x) => (x.cliente || "").trim().toLowerCase();
+  const g = orders.filter(x => (x.mesa || "") === (o.mesa || "") && k(x) === k(o) && x.status !== "cancelado");
+  return { n: g.length, total: g.reduce((a, x) => a + Number(x.total), 0) };
+}
+const partesDoSetor = (o, st) => partesOf(o).filter(p => p.setor === st);
+const doMeuSetor = (o) => VIEW === "todos" || partesDoSetor(o, VIEW).length > 0;
+
+const $ = (id) => document.getElementById(id);
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const hora = (d) => new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const STATUS = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue", cancelado: "Cancelado" };
+
+let session = null, orders = [], filter = "andamento", seen = null, audio = null, timer = null;
+let autoPrint = false, voice = false, printed = new Set();
+try { autoPrint = localStorage.getItem("jp_auto") === "1"; printed = new Set(JSON.parse(localStorage.getItem("jp_printed") || "[]")); } catch (e) {}
+function markPrinted(id) { printed.add(id); try { localStorage.setItem("jp_printed", JSON.stringify([...printed].slice(-400))); } catch (e) {} }
+try { session = JSON.parse(localStorage.getItem("jp_sess") || "null"); } catch (e) {}
+function saveSession(s) {
+  session = s;
+  try { s ? localStorage.setItem("jp_sess", JSON.stringify(s)) : localStorage.removeItem("jp_sess"); } catch (e) {}
+}
+
+/* ============ ACESSO (Supabase Auth via REST) ============ */
+const authHeaders = () => ({ apikey: CFG.key, "Content-Type": "application/json" });
+
+async function signIn(email, password) {
+  const r = await fetch(CFG.url + "/auth/v1/token?grant_type=password", { method: "POST", headers: authHeaders(), body: JSON.stringify({ email, password }) });
+  if (!r.ok) throw new Error("E-mail ou senha incorretos.");
+  saveSession(await r.json());
+}
+async function refreshSession() {
+  if (!session || !session.refresh_token) return false;
+  try {
+    const r = await fetch(CFG.url + "/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: authHeaders(), body: JSON.stringify({ refresh_token: session.refresh_token }) });
+    if (!r.ok) return false;
+    saveSession(await r.json()); return true;
+  } catch (e) { return false; }
+}
+async function api(path, opts = {}, retry = true) {
+  const r = await fetch(CFG.url + path, { ...opts, headers: { apikey: CFG.key, Authorization: "Bearer " + session.access_token, "Content-Type": "application/json", ...(opts.headers || {}) } });
+  if (r.status === 401 && retry) {
+    if (await refreshSession()) return api(path, opts, false);
+    logout();
+  }
+  return r;
+}
+function logout() {
+  saveSession(null); clearInterval(timer); seen = null; orders = [];
+  $("app").hidden = true; $("login").hidden = false; document.title = (VIEW === "todos" ? "Caixa" : SETORES[VIEW]) + " — " + NOME_LOJA;
+}
+
+/* ============ PEDIDOS ============ */
+async function load() {
+  if (!session) return;
+  try {
+    const desde = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const r = await api("/rest/v1/pedidos?select=*&criado_em=gte." + encodeURIComponent(desde) + "&order=criado_em.desc&limit=200");
+    if (!r.ok) throw new Error("falha");
+    orders = await r.json();
+    const ids = new Set(orders.map(o => o.id));
+    const novos = seen ? orders.filter(o => !seen.has(o.id) && o.status === "novo") : [];
+    const meus = novos.filter(doMeuSetor);
+    if (meus.length) { beep(); if (voice) meus.forEach(speak); }
+    seen = ids;
+    if (autoPrint) orders.filter(o => o.status === "novo" && doMeuSetor(o) && !printed.has(o.id)).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em)).forEach(queuePrint);
+    $("status").textContent = "Atualizado às " + hora(new Date());
+    $("status").classList.remove("bad");
+  } catch (e) {
+    $("status").textContent = "Sem conexão. Tentando de novo...";
+    $("status").classList.add("bad");
+  }
+  render();
+}
+async function setStatus(o, st) {
+  try {
+    const r = await api("/rest/v1/pedidos?id=eq." + o.id, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: st }) });
+    if (!r.ok) throw new Error();
+    o.status = st; render();
+  } catch (e) {
+    $("status").textContent = "Não foi possível atualizar o pedido. Tente de novo.";
+    $("status").classList.add("bad");
+  }
+}
+
+/* ============ TELA ============ */
+const ATIVOS = ["novo", "preparo", "pronto"];
+function renderTabs() {
+  const n = (f) => orders.filter(o => doMeuSetor(o) && (f === "todos" ? true : f === "andamento" ? ATIVOS.includes(o.status) : o.status === f)).length;
+  const el = $("tabs"); el.innerHTML = "";
+  [["andamento", "Em andamento"], ["entregue", "Entregues"], ["todos", "Todos (24 h)"]].forEach(([k, label]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "tab";
+    b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + " (" + n(k) + ")";
+    b.onclick = () => { filter = k; render(); };
+    el.appendChild(b);
+  });
+}
+function render() {
+  renderTabs();
+  const abertos = orders.filter(o => o.status === "novo" && doMeuSetor(o)).length;
+  document.title = (abertos ? "(" + abertos + ") " : "") + (VIEW === "todos" ? "Caixa" : SETORES[VIEW]) + " — " + NOME_LOJA;
+  const list = $("list"); list.innerHTML = "";
+  const vis = orders.filter(o => doMeuSetor(o) && (filter === "todos" ? true : filter === "andamento" ? ATIVOS.includes(o.status) : o.status === filter));
+  if (!vis.length) {
+    const p = document.createElement("p"); p.className = "empty";
+    p.textContent = filter === "andamento" ? "Nenhum pedido em andamento. Os novos aparecem aqui sozinhos." : "Nenhum pedido nesta lista.";
+    list.appendChild(p); return;
+  }
+  // mais antigos primeiro entre os ativos, para a cozinha seguir a ordem de chegada
+  if (filter === "andamento") vis.sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+  vis.forEach(o => list.appendChild(card(o)));
+}
+function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function card(o) {
+  const c = mk("article", "card s-" + o.status);
+  const head = mk("div", "card-head");
+  head.append(mk("span", "num", "Pedido #" + o.numero), mk("span", "hora", hora(o.criado_em)));
+  c.appendChild(head);
+  const loc = mk("div", "local", (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente);
+  c.appendChild(loc);
+  const bd = mk("span", "badge " + o.status, STATUS[o.status] || o.status); c.appendChild(bd);
+  if (isAdic(o)) c.appendChild(mk("span", "badge adic", "ADICIONAL"));
+  const ul = mk("ul", "itens");
+  if (VIEW === "todos") {
+    (o.itens || []).forEach(i => {
+      const li = mk("li", "", i.qtd + "x " + i.nome);
+      if (i.detalhe) li.appendChild(mk("small", "", i.detalhe));
+      ul.appendChild(li);
+    });
+  } else {
+    partesDoSetor(o, VIEW).forEach(p => {
+      const li = mk("li", "", p.qtd + "x " + p.txt);
+      if (p.nota) li.appendChild(mk("small", "", p.nota));
+      ul.appendChild(li);
+    });
+  }
+  c.appendChild(ul);
+  if (obsTxt(o)) c.appendChild(mk("div", "obs", "Obs.: " + obsTxt(o)));
+  if (VIEW === "todos") {
+    const tot = mk("div", "tot"); tot.append(mk("span", "", "Total"), mk("span", "", brl.format(o.total)));
+    c.appendChild(tot);
+    const pg = mk("div", "hora", "Pagamento: " + (o.pagamento || "—") + (Number(o.taxa) ? " · inclui embalagem " + brl.format(o.taxa) : ""));
+    pg.style.marginBottom = "10px"; c.appendChild(pg);
+    const g = contaMesa(o);
+    if (g.n > 1) {
+      const cm = mk("div", "hora", (o.mesa ? "Conta da mesa " + o.mesa : "Conta de " + o.cliente) + " (" + g.n + " pedidos): " + brl.format(g.total));
+      cm.style.cssText = "margin-bottom:10px;color:var(--ouro);font-weight:700"; c.appendChild(cm);
+    }
+  }
+
+  const acts = mk("div", "acts");
+  const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
+  if (VIEW === "todos") {
+    if (o.status === "novo") add("Iniciar preparo", "gold", () => setStatus(o, "preparo"));
+    if (o.status === "preparo") add("Marcar pronto", "green", () => setStatus(o, "pronto"));
+    if (o.status === "pronto") add("Entregue", "green", () => setStatus(o, "entregue"));
+    if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
+    add("Cupom completo", "ghost", () => printTicket(o));
+    ["churrasqueira", "cozinha"].forEach(st => { if (partesDoSetor(o, st).length) add("Imprimir " + SETORES[st].toLowerCase(), "ghost", () => printSetor(o, st)); });
+    if (ATIVOS.includes(o.status)) add("Cancelar", "ghost", () => { if (confirm("Cancelar o pedido #" + o.numero + "?")) setStatus(o, "cancelado"); });
+  } else {
+    add("Reimprimir", "ghost", () => printSetor(o, VIEW));
+  }
+  c.appendChild(acts);
+  return c;
+}
+
+/* ============ IMPRESSÃO (cupom de 80 mm) ============ */
+function printTicket(o) {
+  const t = $("ticket"); t.innerHTML = "";
+  const line = (cls, txt) => t.appendChild(mk("div", cls, txt));
+  const hr = () => t.appendChild(document.createElement("hr"));
+  line("c big", NOME_LOJA);
+  if (isAdic(o)) line("c big", "*** ADICIONAL ***");
+  line("c", "Pedido #" + o.numero + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  hr();
+  line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
+  line("", "Cliente: " + o.cliente);
+  line("", "Pagamento: " + (o.pagamento || "—"));
+  hr();
+  (o.itens || []).forEach(i => {
+    const r = mk("div", "row"); r.append(mk("span", "b", i.qtd + "x " + i.nome), mk("span", "", brl.format(i.subtotal))); t.appendChild(r);
+    if (i.detalhe) line("", "   " + i.detalhe);
+  });
+  hr();
+  if (Number(o.taxa)) { const r = mk("div", "row"); r.append(mk("span", "", "Embalagem"), mk("span", "", brl.format(o.taxa))); t.appendChild(r); }
+  const r = mk("div", "row big"); r.append(mk("span", "", "TOTAL"), mk("span", "", brl.format(o.total))); t.appendChild(r);
+  if (obsTxt(o)) { hr(); line("b", "OBS.: " + obsTxt(o)); }
+  window.print();
+}
+
+/* ============ IMPRESSÃO AUTOMÁTICA E VOZ ============ */
+const printQ = []; let printing = false;
+function queuePrint(o) {
+  if (printed.has(o.id)) return;
+  markPrinted(o.id);
+  const setores = VIEW === "todos" ? ["churrasqueira", "cozinha"] : [VIEW];
+  setores.forEach(st => { if (partesDoSetor(o, st).length) printQ.push({ o, st }); });
+  runQ();
+}
+function runQ() {
+  if (printing || !printQ.length) return;
+  printing = true; const j = printQ.shift(); printSetor(j.o, j.st);
+  setTimeout(() => { printing = false; runQ(); }, 2500);
+}
+function speak(o) {
+  if (!("speechSynthesis" in window)) return;
+  const itens = (VIEW === "todos" ? partesOf(o) : partesDoSetor(o, VIEW)).map(p => p.qtd + " " + p.txt + (p.nota ? ", " + p.nota : "")).join(". ");
+  const txt = (isAdic(o) ? "Pedido adicional " : "Novo pedido ") + o.numero + ". " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + ". " + itens + "." + (obsTxt(o) ? " Observação: " + obsTxt(o) : "");
+  const u = new SpeechSynthesisUtterance(txt); u.lang = "pt-BR"; u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+function paintToggles() {
+  $("autoBtn").setAttribute("aria-pressed", String(autoPrint));
+  $("autoBtn").textContent = "Impressão automática: " + (autoPrint ? "ligada" : "desligada");
+  $("voiceBtn").setAttribute("aria-pressed", String(voice));
+  $("voiceBtn").textContent = voice ? "Voz ativada" : "Ler pedidos em voz alta";
+}
+$("autoBtn").onclick = () => {
+  autoPrint = !autoPrint;
+  if (autoPrint) orders.forEach(o => markPrinted(o.id));   /* só imprime o que chegar daqui para frente */
+  try { localStorage.setItem("jp_auto", autoPrint ? "1" : "0"); } catch (e) {}
+  paintToggles();
+};
+$("voiceBtn").onclick = () => {
+  voice = !voice;
+  if (voice && "speechSynthesis" in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance("Voz ativada"));
+  paintToggles();
+};
+paintToggles();
+if (VIEW !== "todos") { $("loginTitle").textContent = SETORES[VIEW]; $("title").textContent = SETORES[VIEW]; document.title = SETORES[VIEW] + " — " + NOME_LOJA; }
+
+/* ============ ADICIONAR ITENS A UM PEDIDO (feito pelo atendente) ============ */
+const allItems = {};
+MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
+const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {} };
+const keyOf = (id, o, e) => id + "|" + o + "|" + (e === null || e === undefined ? "" : e);
+const parseKey = (k) => { const [id, o, e] = k.split("|"); return { id, o: +o, e: e === "" || e === undefined ? null : +e }; };
+
+function openAdd(o) {
+  AD.o = o; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {};
+  $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
+  $("addTitle").textContent = "Adicionar itens — Pedido #" + o.numero + " · " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente;
+  renderAdd(); $("addDlg").showModal();
+}
+function addChange(key, d) {
+  AD.cart[key] = Math.max(0, (AD.cart[key] || 0) + d);
+  if (!AD.cart[key]) delete AD.cart[key];
+  renderAdd();
+}
+function addLinhas() {
+  return Object.entries(AD.cart).map(([k, q]) => {
+    const { id, o, e } = parseKey(k); const it = allItems[id];
+    const d = []; if (it.opcoes) d.push(it.opcoes[o].nome); if (e !== null) d.push("espeto: " + TRAD[e]);
+    return { qtd: q, nome: it.nome, detalhe: d.join(", "), subtotal: q * priceOf(it, o), partes: partesDe(it, o, e, q) };
+  });
+}
+function renderAdd() {
+  const tabs = $("addTabs"); tabs.innerHTML = "";
+  MENU.forEach(c => {
+    const b = mk("button", "tab", c.nome); b.type = "button"; b.setAttribute("aria-pressed", String(c.id === AD.tab));
+    b.onclick = () => { AD.tab = c.id; renderAdd(); };
+    tabs.appendChild(b);
+  });
+  const box = $("addMenu"); box.innerHTML = "";
+  const cat = MENU.find(c => c.id === AD.tab);
+  cat.secoes.forEach(sec => {
+    box.appendChild(mk("div", "sec", sec.titulo));
+    sec.itens.forEach(item => {
+      if (item.esgotado) return;
+      const sel = AD.sel[item.id] || 0, esp = item.espeto ? (AD.esp[item.id] ?? 0) : null;
+      const key = keyOf(item.id, sel, esp);
+      const row = mk("div", "mi");
+      const info = mk("div", "", item.nome); info.appendChild(mk("small", "", brl.format(priceOf(item, sel))));
+      row.appendChild(info);
+      const st = mk("div", "stp");
+      const m = mk("button", "", "−"); m.type = "button"; m.setAttribute("aria-label", "Remover um " + item.nome); m.onclick = () => addChange(key, -1);
+      const p = mk("button", "", "+"); p.type = "button"; p.setAttribute("aria-label", "Adicionar um " + item.nome); p.onclick = () => addChange(key, 1);
+      st.append(m, mk("output", "", AD.cart[key] || 0), p); row.appendChild(st);
+      if (item.opcoes || item.espeto) {
+        const ctl = mk("div", "ctl");
+        if (item.opcoes) {
+          const se = document.createElement("select"); se.setAttribute("aria-label", "Tamanho de " + item.nome);
+          item.opcoes.forEach((op, i) => { const o = mk("option", "", op.nome + " · " + brl.format(op.preco)); o.value = i; if (i === sel) o.selected = true; se.appendChild(o); });
+          se.onchange = () => { AD.sel[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
+        }
+        if (item.espeto) {
+          const se = document.createElement("select"); se.setAttribute("aria-label", "Espeto de " + item.nome);
+          TRAD.forEach((n, i) => { const o = mk("option", "", "Espeto: " + n); o.value = i; if (i === esp) o.selected = true; se.appendChild(o); });
+          se.onchange = () => { AD.esp[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
+        }
+        row.appendChild(ctl);
+      }
+      box.appendChild(row);
+    });
+  });
+  $("addTotal").textContent = brl.format(addLinhas().reduce((a, l) => a + l.subtotal, 0));
+}
+async function sendAdd() {
+  const L = addLinhas();
+  if (!L.length) { $("addErr").textContent = "Escolha pelo menos um item."; return; }
+  const o = AD.o, obs = $("addObs").value.trim();
+  const body = { cliente: o.cliente, mesa: o.mesa || null, pagamento: o.pagamento || null,
+    observacoes: "ADICIONAL" + (obs ? " — " + obs : ""), itens: L, taxa: 0, total: L.reduce((a, l) => a + l.subtotal, 0) };
+  /* grava como pedido novo (mesma regra do cardápio do cliente) */
+  const h = { apikey: CFG.key, "Content-Type": "application/json", Prefer: "return=minimal" };
+  if (CFG.key.startsWith("eyJ")) h.Authorization = "Bearer " + CFG.key;
+  $("addSend").disabled = true; $("addErr").textContent = "";
+  try {
+    const r = await fetch(CFG.url + "/rest/v1/pedidos", { method: "POST", headers: h, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error("falha");
+    $("addDlg").close();
+    $("status").textContent = "Adicional enviado ao pedido #" + o.numero + ".";
+    $("status").classList.remove("bad");
+    await load();
+  } catch (e) {
+    $("addErr").textContent = "Não foi possível enviar o adicional. Confira a conexão e tente de novo.";
+    $("addSend").disabled = false;
+  }
+}
+$("addSend").onclick = sendAdd;
+$("addClose").onclick = () => $("addDlg").close();
+
+/* ============ CUPOM POR SETOR (sem preços) ============ */
+function printSetor(o, st) {
+  const t = $("ticket"); t.innerHTML = "";
+  const line = (cls, txt) => t.appendChild(mk("div", cls, txt));
+  const hr = () => t.appendChild(document.createElement("hr"));
+  line("c big", SETORES[st].toUpperCase());
+  if (isAdic(o)) line("c big", "*** ADICIONAL ***");
+  line("c", "Pedido #" + o.numero + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  hr();
+  line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
+  line("", "Cliente: " + o.cliente);
+  hr();
+  partesDoSetor(o, st).forEach(p => {
+    line("b big", p.qtd + "x " + p.txt);
+    if (p.nota) line("", "   " + p.nota);
+  });
+  if (obsTxt(o)) { hr(); line("b", "OBS.: " + obsTxt(o)); }
+  window.print();
+}
+
+/* ============ SOM ============ */
+function beep() {
+  if (!audio) return;
+  try {
+    [0, 0.25].forEach((d, i) => {
+      const osc = audio.createOscillator(), g = audio.createGain();
+      osc.frequency.value = i ? 1046 : 784; osc.connect(g); g.connect(audio.destination);
+      const t0 = audio.currentTime + d; g.gain.setValueAtTime(0.25, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+      osc.start(t0); osc.stop(t0 + 0.25);
+    });
+  } catch (e) {}
+}
+$("soundBtn").onclick = () => {
+  const on = $("soundBtn").getAttribute("aria-pressed") === "true";
+  if (on) { audio = null; $("soundBtn").setAttribute("aria-pressed", "false"); $("soundBtn").textContent = "Ativar som"; return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  audio = new AC(); beep();
+  $("soundBtn").setAttribute("aria-pressed", "true"); $("soundBtn").textContent = "Som ativado";
+};
+
+/* ============ INÍCIO ============ */
+function enter() {
+  $("login").hidden = true; $("app").hidden = false;
+  load(); clearInterval(timer); timer = setInterval(load, 6000);
+}
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("loginErr").textContent = "";
+  if (!CFG.url || !CFG.key) { $("loginErr").textContent = "Falta configurar a URL e a chave do Supabase no arquivo caixa.html."; return; }
+  try { await signIn($("email").value.trim(), $("senha").value); enter(); }
+  catch (err) { $("loginErr").textContent = err.message || "Não foi possível entrar. Verifique a conexão."; }
+});
+$("refreshBtn").onclick = load;
+$("logoutBtn").onclick = logout;
+document.addEventListener("visibilitychange", () => { if (!document.hidden && session) load(); });
+if (CFG.url && CFG.key && session) enter();
+</script>
+</body>
+</html>
