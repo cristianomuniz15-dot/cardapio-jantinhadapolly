@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Administração — Jantinha da Polly</title>
 <meta name="robots" content="noindex, nofollow">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@1,700&display=swap" rel="stylesheet">
@@ -82,6 +83,22 @@ main { position: relative; z-index: 1; }
 .busca-add button { background: transparent; border: 0; color: var(--ouro); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 10px 6px; min-height: 44px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .add-info { color: var(--muted); font-size: .9rem; margin: 4px 0 2px; }
+.qr-campos { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 10px 0; }
+.qr-campos .campo-s { margin: 0; flex: 1 1 150px; }
+.qr-campos .campo-s.largo { flex: 1 1 100%; }
+.qrgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin: 16px 0; }
+.qrcard { background: #fff; color: #111; border-radius: 14px; padding: 14px; text-align: center; border: 1px solid var(--line); break-inside: avoid; }
+.qrcard .qr { display: flex; justify-content: center; }
+.qrcard strong { display: block; font-family: var(--font-display); font-style: italic; font-size: 1.6rem; margin-top: 6px; }
+.qrcard span { font-size: .8rem; color: #444; }
+#qrPrint { display: none; }
+@page qr { size: A4; margin: 12mm; }
+@media print {
+  body.print-qr #ticket { display: none !important; }
+  body.print-qr #qrPrint { display: block !important; page: qr; }
+  body.print-qr #qrPrint .qrgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm; }
+  body.print-qr #qrPrint .qrcard { border: 1px solid #888; border-radius: 6px; }
+}
 .aj-item { margin: 12px 0; }
 .aj-item .btn { width: 100%; min-height: 50px; justify-content: center; font-size: 1rem; }
 .aj-nota { color: var(--muted); font-size: .88rem; margin: 4px 2px 0; }
@@ -200,7 +217,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 6</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 7</p>
   </form>
 </section>
 
@@ -307,6 +324,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 </dialog>
 
 <div id="ticket" aria-hidden="true"></div>
+<div id="qrPrint" aria-hidden="true"></div>
 
 <script src="cardapio-dados.js"></script>
 <script>
@@ -341,7 +359,7 @@ function paintView() {
   const nome = VIEW === "todos" ? "Caixa" : SETORES[VIEW];
   $("title").textContent = nome;
   document.title = nome + " — " + NOME_LOJA;
-  if (filter === "relatorio" && !(VIEW === "todos" && isDono())) filter = "andamento";
+  if ((filter === "relatorio" || filter === "qr") && !(VIEW === "todos" && isDono())) filter = "andamento";
   try { autoPrint = localStorage.getItem(chaveAuto()) === "1"; } catch (e) { autoPrint = false; }
   paintToggles();
 }
@@ -483,7 +501,7 @@ function logout() {
   /* avisa o Supabase para encerrar este login também no servidor (assim ele não é renovado por outra aba) */
   if (era && era.access_token && CFG.url) { try { fetch(CFG.url + "/auth/v1/logout", { method: "POST", keepalive: true, headers: { apikey: CFG.key, Authorization: "Bearer " + era.access_token } }).catch(() => {}); } catch (e) {} }
   /* não deixa nada do usuário anterior na tela */
-  REL.node = null; REL.data = null; REL.k = "hoje"; NUMDIA.clear(); filter = "andamento";
+  REL.node = null; REL.data = null; REL.k = "hoje"; QR.node = null; QR.ultimo = null; NUMDIA.clear(); filter = "andamento";
   esconderSenhaLogin(); $("senha").value = ""; $("email").value = ""; $("loginErr").textContent = "";
   $("app").hidden = true; $("login").hidden = false; VIEW = "todos"; document.title = "Administração — " + NOME_LOJA;
   try { $("email").focus(); } catch (e) {}
@@ -550,10 +568,10 @@ const ATIVOS = ["novo", "preparo", "pronto"];
 function renderTabs() {
   const n = (f) => f === "contas" ? contasAbertas().length : orders.filter(o => doMeuSetor(o) && passaFiltro(o, f)).length;
   const el = $("tabs"); el.innerHTML = "";
-  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues hoje"]], (VIEW === "todos" && isDono()) ? [["relatorio", "Relatórios"]] : []);
+  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues hoje"]], (VIEW === "todos" && isDono()) ? [["relatorio", "Relatórios"], ["qr", "QR Codes"]] : []);
   abas.forEach(([k, label]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "tab";
-    b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + (k === "relatorio" ? "" : " (" + n(k) + ")");
+    b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + (k === "relatorio" || k === "qr" ? "" : " (" + n(k) + ")");
     b.onclick = () => { filter = k; render(); };
     el.appendChild(b);
   });
@@ -565,6 +583,7 @@ function render() {
   const list = $("list"); list.innerHTML = "";
   if (filter === "contas" && VIEW === "todos") { renderContas(list); return; }
   if (filter === "relatorio" && VIEW === "todos" && isDono()) { renderRelatorio(list); return; }
+  if (filter === "qr" && VIEW === "todos" && isDono()) { renderQrTab(list); return; }
   const vis = orders.filter(o => doMeuSetor(o) && passaFiltro(o, filter));
   if (!vis.length) {
     const p = document.createElement("p"); p.className = "empty";
@@ -941,6 +960,67 @@ function imprimirResumo() {
   hr(); line("b", d.porMes ? "POR MÊS" : "POR DIA");
   d.grupos.forEach(g => row("", g.rotulo, brl.format(g.valor)));
   window.print();
+}
+
+/* ============ QR CODES DAS MESAS (só donos) ============ */
+const QR = { node: null, ultimo: null };
+function mesaLink(base, n) {
+  const u = base.split("#")[0].split("?")[0];
+  return n ? u + "?mesa=" + encodeURIComponent(n) : u;
+}
+function qrCard(grid, text, title, sub) {
+  const c = mk("div", "qrcard"), q = mk("div", "qr"); c.appendChild(q);
+  new QRCode(q, { text, width: 160, height: 160, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+  c.append(mk("strong", "", title), mk("span", "", sub)); grid.appendChild(c);
+}
+function montarQr() {
+  const n = mk("section", "rel");
+  n.appendChild(mk("h2", "", "QR Codes das mesas"));
+  n.appendChild(mk("p", "rel-nota", "Gere os QR Codes, imprima e cole um em cada mesa. Quem escanear já cai na mesa certa. O primeiro QR Code (sem mesa) serve para o balcão, a porta e as redes sociais."));
+  const campos = mk("div", "qr-campos");
+  const campo = (id, rot, tipo, valor, largo, extra) => {
+    const w = mk("div", "campo-s" + (largo ? " largo" : "")), l = mk("label", "", rot); l.htmlFor = id;
+    const i = document.createElement("input"); i.id = id; i.type = tipo; i.value = valor; if (extra) Object.assign(i, extra);
+    w.append(l, i); return w;
+  };
+  const base = (location.origin && location.origin !== "null" ? location.origin : "") + "/";
+  campos.append(
+    campo("qrLink", "Link do cardápio (já preenchido)", "url", base, true, { inputMode: "url", placeholder: "https://..." }),
+    campo("qrQtd", "Quantidade de mesas", "number", "10", false, { min: 0, max: 80 }),
+    campo("qrIni", "Primeira mesa", "number", "1", false, { min: 1, max: 999 }));
+  n.appendChild(campos);
+  const acts = mk("div", "rel-bar");
+  const g = mk("button", "btn gold small", "Gerar QR Codes"); g.type = "button"; g.onclick = gerarQr;
+  const im = mk("button", "btn ghost small", "Imprimir"); im.type = "button"; im.id = "qrImprimir"; im.disabled = true; im.onclick = imprimirQr;
+  acts.append(g, im); n.appendChild(acts);
+  const er = mk("p", "err"); er.id = "qrErr"; er.setAttribute("role", "alert"); n.appendChild(er);
+  const grid = mk("div", "qrgrid"); grid.id = "qrGrid"; n.appendChild(grid);
+  QR.node = n;
+}
+function gerarQr() {
+  const err = $("qrErr"); err.textContent = "";
+  const base = $("qrLink").value.trim();
+  if (!/^https?:\/\/.+/i.test(base)) { err.textContent = "Digite o link completo do cardápio, começando com https://"; $("qrLink").focus(); return; }
+  if (typeof QRCode === "undefined") { err.textContent = "O gerador de QR Code não carregou. Verifique a conexão e tente de novo."; return; }
+  const qtd = Math.max(0, Math.min(80, parseInt($("qrQtd").value, 10) || 0)), ini = Math.max(1, parseInt($("qrIni").value, 10) || 1);
+  QR.ultimo = [{ url: mesaLink(base), titulo: NOME_LOJA, sub: "Cardápio — aponte a câmera" }];
+  for (let i = 0; i < qtd; i++) QR.ultimo.push({ url: mesaLink(base, ini + i), titulo: "Mesa " + (ini + i), sub: "Aponte a câmera para pedir" });
+  const grid = $("qrGrid"); grid.innerHTML = "";
+  QR.ultimo.forEach(q => qrCard(grid, q.url, q.titulo, q.sub));
+  $("qrImprimir").disabled = false;
+}
+function imprimirQr() {
+  if (!QR.ultimo) return;
+  const alvo = $("qrPrint"); alvo.innerHTML = "";
+  const grid = mk("div", "qrgrid"); alvo.appendChild(grid);
+  QR.ultimo.forEach(q => qrCard(grid, q.url, q.titulo, q.sub));
+  document.body.classList.add("print-qr");
+  window.print();
+  setTimeout(() => { document.body.classList.remove("print-qr"); alvo.innerHTML = ""; }, 800);
+}
+function renderQrTab(list) {
+  if (!QR.node) montarQr();
+  list.appendChild(QR.node);
 }
 
 /* ============ CONTAS DA MESA: fechar conta e imprimir conferência ============ */

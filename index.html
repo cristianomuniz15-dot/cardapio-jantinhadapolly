@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@1,700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root {
   --bg: #0E0B0A;
@@ -157,7 +156,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 .sent p { margin: 0 0 10px; }
 
 /* Rodapé e painel do dono */
-.versao { margin: 0 0 6px; font-size: .78rem; opacity: .7; }
+.versao { margin: 0 0 6px; font-size: .75rem; opacity: .5; }
 .foot { max-width: 640px; margin: 0 auto; padding: 0 16px 130px; color: var(--muted); font-size: .9rem; }
 .linkbtn { background: none; border: 0; padding: 8px 0; text-decoration: underline; cursor: pointer; color: inherit; }
 .owner { max-width: 640px; margin: 0 auto; padding: 8px 16px 130px; }
@@ -209,38 +208,8 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 <main id="menu" class="noprint" aria-live="polite"></main>
 
 <div class="foot noprint">
-  <p class="versao" id="versao">Versão 12/10/2026 · 6</p>
-  <button class="linkbtn" id="ownerToggle" type="button" aria-expanded="false" aria-controls="owner">Área do dono: QR Codes das mesas</button>
+  <p class="versao" id="versao">Versão 12/10/2026 · 7</p>
 </div>
-
-<section class="owner" id="owner" hidden>
-  <div class="noprint">
-    <h2>QR Codes das mesas</h2>
-    <p>Cole abaixo o link público deste cardápio, escolha quantas mesas você tem e gere os QR Codes. Depois é só imprimir e colar em cada mesa.</p>
-    <div class="fields">
-      <div class="field">
-        <label for="baseUrl">Link do cardápio</label>
-        <input id="baseUrl" type="url" inputmode="url" placeholder="https://...">
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label for="mesaCount">Quantidade de mesas</label>
-          <input id="mesaCount" type="number" min="0" max="80" value="10">
-        </div>
-        <div class="field">
-          <label for="mesaStart">Primeira mesa</label>
-          <input id="mesaStart" type="number" min="1" max="999" value="1">
-        </div>
-      </div>
-    </div>
-    <div class="actions">
-      <button class="btn add" id="genQr" type="button">Gerar QR Codes</button>
-      <button class="btn ghost" id="printQr" type="button" disabled>Imprimir</button>
-    </div>
-    <p class="err" id="qrErr" role="alert"></p>
-  </div>
-  <div class="qrgrid" id="qrgrid"></div>
-</section>
 
 <div class="cartbar noprint" id="cartbar" hidden>
   <button type="button" id="openCart" aria-haspopup="dialog">
@@ -715,41 +684,6 @@ $("newOrder").onclick = () => {
   state.enviado = false; state.recap = null; state.cart = {}; guardarCarrinho(); $("fObs").value = "";
   $("sheet").close(); renderAll();
 };
-
-/* ============ PAINEL DO DONO: QR CODES ============ */
-$("ownerToggle").onclick = () => {
-  const o = $("owner"); o.hidden = !o.hidden;
-  $("ownerToggle").setAttribute("aria-expanded", String(!o.hidden));
-  if (!o.hidden) o.scrollIntoView({ behavior: "auto", block: "start" });
-};
-const savedBase = store("jp_base"); if (savedBase) $("baseUrl").value = savedBase;
-
-function mesaLink(base, n) {
-  const u = base.split("#")[0].split("?")[0];
-  return n ? u + "?mesa=" + encodeURIComponent(n) : u;
-}
-function qrCard(grid, text, title, sub) {
-  const c = document.createElement("div"); c.className = "qrcard";
-  const q = document.createElement("div"); q.className = "qr"; c.appendChild(q);
-  new QRCode(q, { text, width: 160, height: 160, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
-  const s = document.createElement("strong"); s.textContent = title; c.appendChild(s);
-  const sp = document.createElement("span"); sp.textContent = sub; c.appendChild(sp);
-  grid.appendChild(c);
-}
-$("genQr").onclick = () => {
-  const err = $("qrErr"); err.textContent = "";
-  const base = $("baseUrl").value.trim();
-  if (!/^https?:\/\/.+/i.test(base)) { err.textContent = "Cole o link completo do cardápio, começando com https://"; $("baseUrl").focus(); return; }
-  if (typeof QRCode === "undefined") { err.textContent = "O gerador de QR Code não carregou. Verifique a conexão e tente de novo."; return; }
-  store("jp_base", base);
-  const count = Math.max(0, Math.min(80, parseInt($("mesaCount").value, 10) || 0));
-  const start = Math.max(1, parseInt($("mesaStart").value, 10) || 1);
-  const grid = $("qrgrid"); grid.innerHTML = "";
-  qrCard(grid, mesaLink(base), CONFIG.nome, "Cardápio — aponte a câmera");
-  for (let i = 0; i < count; i++) { const n = start + i; qrCard(grid, mesaLink(base, n), "Mesa " + n, "Aponte a câmera para pedir"); }
-  $("printQr").disabled = false;
-};
-$("printQr").onclick = () => window.print();
 
 /* ============ PEDIDO ZERA SOZINHO SE A PESSOA SAIR E VOLTAR DEPOIS DE UM TEMPO ============ */
 const PRAZO_INATIVO = 30 * 60 * 1000;
