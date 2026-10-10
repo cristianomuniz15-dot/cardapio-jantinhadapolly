@@ -190,6 +190,8 @@ function paintView() {
   const nome = VIEW === "todos" ? "Caixa" : SETORES[VIEW];
   $("title").textContent = nome;
   document.title = nome + " — " + NOME_LOJA;
+  try { autoPrint = localStorage.getItem(chaveAuto()) === "1"; } catch (e) { autoPrint = false; }
+  paintToggles();
 }
 function partesOf(o) {
   const out = [];
@@ -232,9 +234,19 @@ const hora = (d) => new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", m
 const STATUS = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue", cancelado: "Cancelado" };
 
 let session = null, orders = [], filter = "andamento", seen = null, audio = null, timer = null;
-let autoPrint = false, voice = false, printed = new Set();
-try { autoPrint = localStorage.getItem("jp_auto") === "1"; printed = new Set(JSON.parse(localStorage.getItem("jp_printed") || "[]")); } catch (e) {}
-function markPrinted(id) { printed.add(id); try { localStorage.setItem("jp_printed", JSON.stringify([...printed].slice(-400))); } catch (e) {} }
+let autoPrint = false, voice = false;
+/* A opção e a lista de pedidos já impressos são separadas por tipo de login, para o caixa e
+   as impressoras não se misturarem, e são relidas do navegador a cada pedido para duas abas
+   do mesmo setor não imprimirem em duplicidade. */
+const memImpressos = new Set();
+const chaveAuto = () => "jp_auto_" + VIEW;
+const chaveImp = () => "jp_impressos_" + VIEW;
+function lerImpressos() { try { return new Set(JSON.parse(localStorage.getItem(chaveImp()) || "[]")); } catch (e) { return new Set(); } }
+function jaImpresso(id) { return memImpressos.has(id) || lerImpressos().has(id); }
+function markPrinted(...ids) {
+  ids.forEach(i => memImpressos.add(i));
+  try { const s = lerImpressos(); ids.forEach(i => s.add(i)); localStorage.setItem(chaveImp(), JSON.stringify([...s].slice(-400))); } catch (e) {}
+}
 try { session = JSON.parse(localStorage.getItem("jp_sess") || "null"); } catch (e) {}
 function saveSession(s) {
   session = s;
@@ -283,7 +295,7 @@ async function load() {
     const meus = novos.filter(doMeuSetor);
     if (meus.length) { beep(); if (voice) meus.forEach(speak); }
     seen = ids;
-    if (autoPrint) orders.filter(o => o.status === "novo" && doMeuSetor(o) && !printed.has(o.id)).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em)).forEach(queuePrint);
+    if (autoPrint) orders.filter(o => o.status === "novo" && doMeuSetor(o) && !jaImpresso(o.id)).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em)).forEach(queuePrint);
     $("status").textContent = "Atualizado às " + hora(new Date());
     $("status").classList.remove("bad");
   } catch (e) {
@@ -383,8 +395,8 @@ function card(o) {
       if (o.status === "pronto") add("Entregue", "green", () => setStatus(o, "entregue"));
     }
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
-    add("Cupom completo", "ghost", () => printTicket(o));
-    ["churrasqueira", "cozinha"].forEach(st => { if (partesDoSetor(o, st).length) add("Imprimir " + SETORES[st].toLowerCase(), "ghost", () => printSetor(o, st)); });
+    add("Imprimir pedido", "ghost", () => printProducao(o));
+    if (!o.mesa) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
     if (ATIVOS.includes(o.status)) add("Cancelar", "ghost", () => { if (confirm("Cancelar o pedido #" + o.numero + "?")) setStatus(o, "cancelado"); });
   } else {
     add("Reimprimir", "ghost", () => printSetor(o, VIEW));
@@ -420,15 +432,15 @@ function printTicket(o) {
 /* ============ IMPRESSÃO AUTOMÁTICA E VOZ ============ */
 const printQ = []; let printing = false;
 function queuePrint(o) {
-  if (printed.has(o.id)) return;
+  if (jaImpresso(o.id)) return;
   markPrinted(o.id);
-  const setores = VIEW === "todos" ? ["churrasqueira", "cozinha"] : [VIEW];
-  setores.forEach(st => { if (partesDoSetor(o, st).length) printQ.push({ o, st }); });
+  if (VIEW === "todos") { if (partesOf(o).some(p => p.setor !== "bebidas")) printQ.push({ o, st: "todos" }); }   /* só bebida não gera cupom */
+  else if (partesDoSetor(o, VIEW).length) printQ.push({ o, st: VIEW });
   runQ();
 }
 function runQ() {
   if (printing || !printQ.length) return;
-  printing = true; const j = printQ.shift(); printSetor(j.o, j.st);
+  printing = true; const j = printQ.shift(); if (j.st === "todos") printProducao(j.o); else printSetor(j.o, j.st);
   setTimeout(() => { printing = false; runQ(); }, 2500);
 }
 function speak(o) {
@@ -440,14 +452,15 @@ function speak(o) {
 }
 function paintToggles() {
   $("autoBtn").setAttribute("aria-pressed", String(autoPrint));
-  $("autoBtn").textContent = "Impressão automática: " + (autoPrint ? "ligada" : "desligada");
+  $("autoBtn").textContent = (VIEW === "todos" ? "Impressão automática (1 impressora): " : "Impressão automática: ") + (autoPrint ? "ligada" : "desligada");
+  $("autoBtn").title = VIEW === "todos" ? "Ligue só se uma única impressora atende tudo. Se a churrasqueira e a cozinha têm impressora própria, deixe desligado aqui." : "Imprime sozinho cada pedido novo deste setor.";
   $("voiceBtn").setAttribute("aria-pressed", String(voice));
   $("voiceBtn").textContent = voice ? "Voz ativada" : "Ler pedidos em voz alta";
 }
 $("autoBtn").onclick = () => {
   autoPrint = !autoPrint;
-  if (autoPrint) orders.forEach(o => markPrinted(o.id));   /* só imprime o que chegar daqui para frente */
-  try { localStorage.setItem("jp_auto", autoPrint ? "1" : "0"); } catch (e) {}
+  if (autoPrint) markPrinted(...orders.map(o => o.id));   /* só imprime o que chegar daqui para frente */
+  try { localStorage.setItem(chaveAuto(), autoPrint ? "1" : "0"); } catch (e) {}
   paintToggles();
 };
 $("voiceBtn").onclick = () => {
@@ -650,6 +663,26 @@ async function sendAdd() {
 }
 $("addSend").onclick = sendAdd;
 $("addClose").onclick = () => $("addDlg").close();
+
+/* ============ CUPOM ÚNICO DO PEDIDO (caixa): uma folha, com seções por setor, sem preços ============ */
+function printProducao(o) {
+  const t = $("ticket"); t.innerHTML = "";
+  const line = (cls, txt) => t.appendChild(mk("div", cls, txt));
+  const hr = () => t.appendChild(document.createElement("hr"));
+  line("c big", "PEDIDO #" + o.numero);
+  if (isAdic(o)) line("c big", "*** ADICIONAL ***");
+  line("c", new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  hr();
+  line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
+  line("", "Cliente: " + o.cliente);
+  ["churrasqueira", "cozinha", "bebidas"].forEach(st => {
+    const ps = partesDoSetor(o, st); if (!ps.length) return;
+    hr(); line("b", "== " + SETORES[st].toUpperCase() + " ==");
+    ps.forEach(p => { line("b big", p.qtd + "x " + p.txt); if (p.nota) line("", "   " + p.nota); });
+  });
+  if (obsTxt(o)) { hr(); line("b", "OBS.: " + obsTxt(o)); }
+  window.print();
+}
 
 /* ============ CUPOM POR SETOR (sem preços) ============ */
 function printSetor(o, st) {
