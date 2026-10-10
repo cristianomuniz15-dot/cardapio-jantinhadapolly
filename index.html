@@ -209,7 +209,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 <main id="menu" class="noprint" aria-live="polite"></main>
 
 <div class="foot noprint">
-  <p class="versao" id="versao"></p>
+  <p class="versao" id="versao">Versão 12/10/2026 · 6</p>
   <button class="linkbtn" id="ownerToggle" type="button" aria-expanded="false" aria-controls="owner">Área do dono: QR Codes das mesas</button>
 </div>
 
@@ -338,7 +338,7 @@ function tipoNavegacao() {
 }
 const NOVA_VISITA = tipoNavegacao() === "navigate";
 if (NOVA_VISITA) { store("jp_cart", null); store("jp_form", null); }
-const PRAZO_CARRINHO = 3 * 3600 * 1000, PRAZO_FORM = 3 * 3600 * 1000;
+const PRAZO_CARRINHO = 30 * 60 * 1000, PRAZO_FORM = 30 * 60 * 1000;   /* 30 minutos */
 function guardarCarrinho() { store("jp_cart", { t: Date.now(), cart: state.cart }); }
 const savedCart = store("jp_cart");
 if (savedCart && savedCart.cart && typeof savedCart.cart === "object" && Date.now() - (savedCart.t || 0) < PRAZO_CARRINHO) state.cart = savedCart.cart;
@@ -751,9 +751,22 @@ $("genQr").onclick = () => {
 };
 $("printQr").onclick = () => window.print();
 
+/* ============ PEDIDO ZERA SOZINHO SE A PESSOA SAIR E VOLTAR DEPOIS DE UM TEMPO ============ */
+const PRAZO_INATIVO = 30 * 60 * 1000;
+let ultimaAtividade = Date.now();
+["pointerdown", "keydown", "input", "touchstart"].forEach(ev => document.addEventListener(ev, () => { ultimaAtividade = Date.now(); }, { passive: true, capture: true }));
+function reiniciarPedido() {
+  state.cart = {}; state.enviado = false; state.recap = null; state.fallback = false; state.q = ""; guardarCarrinho();
+  $("fNome").value = ""; $("fObs").value = ""; $("fPag").selectedIndex = 0; if (!urlMesa) $("fMesa").value = "";
+  store("jp_form", null);
+  $("busca").value = ""; $("buscaLimpar").hidden = true; $("tabs").hidden = false;
+  if ($("sheet").open) $("sheet").close();
+  ultimaAtividade = Date.now(); renderAll();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - ultimaAtividade > PRAZO_INATIVO) reiniciarPedido(); });
+
 /* ============ INÍCIO ============ */
-const VERSAO = "12/10/2026 · 5";
-$("versao").textContent = "Versão " + VERSAO;
+
 $("waLink").href = "https://wa.me/" + CONFIG.whatsapp;
 /* Preenche o formulário só com o que é desta visita. Roda também quando a página volta do histórico,
    porque alguns navegadores devolvem sozinhos o texto antigo dos campos. */
