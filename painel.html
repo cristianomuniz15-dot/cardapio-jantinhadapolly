@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel — Jantinha da Polly</title>
+<title>Administração — Jantinha da Polly</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -139,7 +139,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 <body>
 
 <section id="login">
-  <h1 id="loginTitle">Painel da equipe</h1>
+  <h1 id="loginTitle">Administração</h1>
   <p style="color:var(--muted);margin:6px 0 0">Jantinha da Polly — acesso da equipe</p>
   <form id="loginForm">
     <div><label for="email">Usuário</label><input id="email" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Ex.: maria" required></div>
@@ -147,6 +147,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <div class="pwd"><input id="senha" type="password" autocomplete="current-password" required>
         <button class="ver" id="senhaVer" type="button" aria-pressed="false" aria-controls="senha">Mostrar</button></div></div>
     <button class="btn main" type="submit">Entrar</button>
+    <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
   </form>
 </section>
@@ -174,6 +175,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <button class="btn ghost small" id="pwdCancelar" type="button">Cancelar</button>
     </div>
     <p class="hora" id="pwdUser"></p>
+    <div class="campo-s" id="pwdUsuarioCampo" hidden><label for="pwdUsuario">Usuário</label><input id="pwdUsuario" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Ex.: maria"></div>
     <div class="campo-s"><label for="pwdAtual">Senha atual</label><div class="pwd"><input id="pwdAtual" type="password" autocomplete="current-password"></div></div>
     <div class="campo-s"><label for="pwdNova">Nova senha</label><div class="pwd"><input id="pwdNova" type="password" autocomplete="new-password"></div></div>
     <div class="campo-s"><label for="pwdConf">Repita a nova senha</label><div class="pwd"><input id="pwdConf" type="password" autocomplete="new-password"></div></div>
@@ -237,6 +239,9 @@ const DOMINIO_LOGIN = "jantinhadapolly.com";
 /* Quem vê a aba "Relatórios" (valores de vendas). Use os nomes de usuário do caixa.
    Deixe a lista vazia ( [] ) para todos os logins do caixa verem. */
 const DONOS = ["humberto", "pollyanna"];
+/* Logins de posto (usados por várias pessoas): a senha é trocada pelo dono no Supabase, e não pela tela.
+   Para liberar a troca também para eles, apague os nomes desta lista ( [] ). */
+const LOGINS_COMPARTILHADOS = ["churrasqueira", "cozinha"];
 /* O dia de vendas começa a esta hora (assim os pedidos depois da meia-noite contam no dia anterior). */
 const HORA_VIRADA = 5;
 const SETORES = { churrasqueira: "Churrasqueira", cozinha: "Cozinha", bebidas: "Bebidas" };
@@ -364,7 +369,7 @@ async function api(path, opts = {}, retry = true) {
 function logout() {
   saveSession(null); clearInterval(timer); seen = null; orders = [];
   esconderSenhaLogin(); $("senha").value = "";
-  $("app").hidden = true; $("login").hidden = false; VIEW = "todos"; document.title = "Painel — " + NOME_LOJA;
+  $("app").hidden = true; $("login").hidden = false; VIEW = "todos"; document.title = "Administração — " + NOME_LOJA;
 }
 
 /* ============ PEDIDOS ============ */
@@ -1116,17 +1121,27 @@ function erroSenha(j) {
   if (/reauth/i.test(cod + msg)) return "Por segurança, saia do painel, entre de novo e tente trocar a senha.";
   return "Não foi possível trocar a senha. Tente de novo.";
 }
+const emailDeUsuario = (u) => { const x = String(u || "").trim().toLowerCase().replace(/\s+/g, ""); return !x ? "" : (x.includes("@") ? x : x + "@" + DOMINIO_LOGIN); };
+const estaLogado = () => !!(session && session.user && session.user.email);
 function abrirTrocaSenha() {
+  const logado = estaLogado();
   ["pwdAtual", "pwdNova", "pwdConf"].forEach(id => { $(id).value = ""; });
   mostrarSenhas(false, $("pwdVer"), [$("pwdAtual"), $("pwdNova"), $("pwdConf")]); $("pwdVer").textContent = "Mostrar senhas";
   $("pwdMsg").className = "err"; $("pwdMsg").textContent = ""; $("pwdSalvar").disabled = false;
-  $("pwdUser").textContent = "Usuário: " + (((session && session.user && session.user.email) || "").split("@")[0]);
-  $("pwdDlg").showModal(); $("pwdAtual").focus();
+  $("pwdUser").hidden = !logado; $("pwdUsuarioCampo").hidden = logado;
+  if (logado) $("pwdUser").textContent = "Usuário: " + session.user.email.split("@")[0];
+  else $("pwdUsuario").value = $("email").value.trim();
+  $("pwdDlg").showModal();
+  (logado || $("pwdUsuario").value ? $("pwdAtual") : $("pwdUsuario")).focus();
 }
 async function salvarNovaSenha() {
   const atual = $("pwdAtual").value, nova = $("pwdNova").value, conf = $("pwdConf").value, msg = $("pwdMsg");
   const erro = (t) => { msg.className = "err"; msg.textContent = t; };
-  const usuario = (((session && session.user && session.user.email) || "").split("@")[0] || "").toLowerCase();
+  const logado = estaLogado();
+  const alvo = logado ? session.user.email : emailDeUsuario($("pwdUsuario").value);
+  const usuario = (alvo.split("@")[0] || "").toLowerCase();
+  if (!usuario) return erro("Digite o usuário.");
+  if (LOGINS_COMPARTILHADOS.includes(usuario)) return erro("A senha da churrasqueira e da cozinha é trocada pelo responsável (dono). Fale com ele.");
   if (!atual) return erro("Digite a senha atual.");
   if (nova.length < 8) return erro("A nova senha precisa ter pelo menos 8 caracteres.");
   if (nova !== conf) return erro("A confirmação não é igual à nova senha.");
@@ -1135,15 +1150,18 @@ async function salvarNovaSenha() {
   $("pwdSalvar").disabled = true; msg.className = "hora"; msg.textContent = "Salvando...";
   try {
     /* confirma a senha atual (e renova o login) antes de trocar */
-    const r1 = await fetch(CFG.url + "/auth/v1/token?grant_type=password", { method: "POST", headers: authHeaders(), body: JSON.stringify({ email: session.user.email, password: atual }) });
-    if (!r1.ok) throw new ErroSenha("A senha atual está incorreta.");
+    const r1 = await fetch(CFG.url + "/auth/v1/token?grant_type=password", { method: "POST", headers: authHeaders(), body: JSON.stringify({ email: alvo, password: atual }) });
+    if (!r1.ok) throw new ErroSenha("A senha atual está incorreta (ou o usuário não existe).");
     const nova_sessao = await r1.json();
     const r2 = await fetch(CFG.url + "/auth/v1/user", { method: "PUT", headers: { apikey: CFG.key, Authorization: "Bearer " + nova_sessao.access_token, "Content-Type": "application/json" }, body: JSON.stringify({ password: nova }) });
     if (!r2.ok) { let j = {}; try { j = await r2.json(); } catch (e) {} throw new ErroSenha(erroSenha(j)); }
-    saveSession(nova_sessao);
+    if (logado) saveSession(nova_sessao);   /* sem login: não entra sozinho, a pessoa entra com a nova senha */
     ["pwdAtual", "pwdNova", "pwdConf"].forEach(id => { $(id).value = ""; });
-    msg.className = "ok-msg"; msg.textContent = "Senha trocada com sucesso! Use a nova senha na próxima vez que entrar.";
-    setTimeout(() => { if ($("pwdDlg").open) $("pwdDlg").close(); }, 2500);
+    msg.className = "ok-msg"; msg.textContent = logado ? "Senha trocada com sucesso! Use a nova senha na próxima vez que entrar." : "Senha trocada com sucesso! Agora entre com a nova senha.";
+    setTimeout(() => {
+      if ($("pwdDlg").open) $("pwdDlg").close();
+      if (!logado) { $("email").value = usuario; $("senha").value = ""; $("senha").focus(); }
+    }, 2500);
     return;
   } catch (e) {
     erro(e instanceof ErroSenha ? e.message : "Não foi possível trocar a senha. Confira a conexão e tente de novo.");
@@ -1151,6 +1169,7 @@ async function salvarNovaSenha() {
   $("pwdSalvar").disabled = false;
 }
 $("pwdBtn").onclick = abrirTrocaSenha;
+$("trocarSenhaLogin").onclick = abrirTrocaSenha;
 $("pwdCancelar").onclick = () => $("pwdDlg").close();
 $("pwdSalvar").onclick = salvarNovaSenha;
 $("pwdSug").onclick = () => {
