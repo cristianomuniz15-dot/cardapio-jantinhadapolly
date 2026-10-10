@@ -72,6 +72,8 @@ header.top > * { min-width: 0; }
 .aviso-som[hidden] { display: none; }
 .marca-agua { position: fixed; left: 50%; top: 58%; width: min(80vw, 780px); aspect-ratio: 545 / 200; transform: translate(-50%, -50%); z-index: 0; pointer-events: none; background-repeat: no-repeat; background-size: 100% 100%; opacity: .075; -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 30%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 30%, transparent 100%); }
 main { position: relative; z-index: 1; }
+.acts .btn.entregar { flex: 1 1 100%; min-height: 48px; font-size: 1.05rem; }
+.barra-status .desfazer { background: transparent; border: 0; color: var(--ouro); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 6px 10px; font-size: .95rem; }
 .aj-item { margin: 12px 0; }
 .aj-item .btn { width: 100%; min-height: 50px; justify-content: center; font-size: 1rem; }
 .aj-nota { color: var(--muted); font-size: .88rem; margin: 4px 2px 0; }
@@ -386,10 +388,15 @@ const $ = (id) => document.getElementById(id);
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const hora = (d) => new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 let avisoTimer = null;
-function avisar(txt, ruim) {
+function avisar(txt, ruim, desfazer) {
   const el = $("status"); el.textContent = txt; el.classList.toggle("bad", !!ruim);
+  if (desfazer) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "desfazer"; b.textContent = "Desfazer";
+    b.onclick = () => { el.textContent = ""; desfazer(); };
+    el.appendChild(document.createTextNode(" ")); el.appendChild(b);
+  }
   clearTimeout(avisoTimer);
-  if (!ruim) avisoTimer = setTimeout(() => { if (el.textContent === txt) el.textContent = ""; }, 7000);
+  if (!ruim) avisoTimer = setTimeout(() => { el.textContent = ""; }, desfazer ? 9000 : 7000);
 }
 const STATUS = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue", cancelado: "Cancelado" };
 
@@ -486,9 +493,15 @@ async function setStatus(o, st) {
     const r = await api("/rest/v1/pedidos?id=eq." + o.id, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: st }) });
     if (!r.ok) throw new Error();
     o.status = st; render();
+    return true;
   } catch (e) {
     avisar("Não foi possível atualizar o pedido. Tente de novo.", true);
+    return false;
   }
+}
+async function entregar(o) {
+  const antes = o.status;
+  if (await setStatus(o, "entregue")) avisar("Pedido #" + nPed(o) + " entregue.", false, () => setStatus(o, antes));   /* o Desfazer cobre o toque por engano */
 }
 
 /* ============ TELA ============ */
@@ -563,14 +576,8 @@ function card(o) {
   const acts = mk("div", "acts");
   const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
   if (VIEW === "todos") {
-    if (soBebida(o)) {
-      /* só bebida: não passa por preparo, vai direto para entregue */
-      if (ATIVOS.includes(o.status)) add("Entregue", "green", () => setStatus(o, "entregue"));
-    } else {
-      if (o.status === "novo") add("Iniciar preparo", "gold", () => setStatus(o, "preparo"));
-      if (o.status === "preparo") add("Marcar pronto", "green", () => setStatus(o, "pronto"));
-      if (o.status === "pronto") add("Entregue", "green", () => setStatus(o, "entregue"));
-    }
+    /* um clique só: o pedido vai direto de "Novo" para "Entregue" */
+    if (ATIVOS.includes(o.status)) add("Entregue", "green entregar", () => entregar(o));
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
     add("Imprimir pedido", "ghost", () => printProducao(o));
     if (!o.mesa) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
