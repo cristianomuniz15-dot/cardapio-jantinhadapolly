@@ -39,6 +39,7 @@
 }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.4; -webkit-text-size-adjust: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -286,13 +287,14 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
         <div class="total"><span>Total</span><span id="sheetTotal">R$ 0,00</span></div>
       </div>
       <div class="actions">
+        <button class="btn primary" id="sendDireto" type="button" hidden>Enviar pedido</button>
         <a class="btn primary" id="send" href="#" target="_blank" rel="noopener">Enviar pedido pelo WhatsApp</a>
         <button class="btn ghost" id="copy" type="button">Copiar pedido</button>
       </div>
       <p class="err" id="formErr" role="alert"></p>
     </div>
     <div class="sent" id="sent" hidden>
-      <p><b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente.</p>
+      <p id="sentTexto"><b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente.</p>
       <p>Se quiser acrescentar mais alguma coisa depois, é só chamar o atendente.</p>
       <div class="actions">
         <a class="btn ghost" id="reopenWa" href="#" target="_blank" rel="noopener">Abrir o WhatsApp de novo</a>
@@ -320,7 +322,7 @@ const CONFIG = {
 /* ============ ESTADO ============ */
 const $ = (id) => document.getElementById(id);
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const state = { q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, recap: null, lastHref: "" };
+const state = { q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, fallback: false, recap: null, lastHref: "" };
 
 function store(key, val) {
   try { if (val === undefined) { const v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; }
@@ -344,7 +346,7 @@ function cleanCart() {
   });
 }
 function change(key, delta) {
-  state.enviado = false; state.recap = null;
+  state.enviado = false; state.recap = null; state.fallback = false;
   state.cart[key] = Math.max(0, (state.cart[key] || 0) + delta);
   if (!state.cart[key]) delete state.cart[key];
   guardarCarrinho();
@@ -504,9 +506,14 @@ function renderSums() {
   $("sumTaxaRow").hidden = taxa === 0;
   $("sumTaxa").textContent = brl.format(taxa);
   $("sheetTotal").textContent = brl.format(t);
-  $("fPagWrap").hidden = !!$("fMesa").value.trim();
-  $("mesaHint").textContent = $("fMesa").value.trim()
-    ? "Consumo no local: você escolhe como pagar na hora de fechar a conta." : "Sem mesa = retirada, com taxa de embalagem de " + brl.format(CONFIG.taxaEmbalagem) + ".";
+  const comMesa = !!$("fMesa").value.trim();
+  const direto = comMesa && !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);   /* no local: vai direto para a cozinha */
+  $("sendDireto").hidden = !direto;
+  $("send").hidden = direto && !state.fallback;
+  $("copy").hidden = direto;
+  $("fPagWrap").hidden = comMesa;
+  $("mesaHint").textContent = comMesa
+    ? (direto ? "Consumo no local: o pedido vai direto para a cozinha e você escolhe como pagar na hora de fechar a conta." : "Consumo no local: você escolhe como pagar na hora de fechar a conta.") : "Sem mesa = retirada, com taxa de embalagem de " + brl.format(CONFIG.taxaEmbalagem) + ".";
 }
 
 function renderLines() {
@@ -521,7 +528,7 @@ function renderLines() {
       const b = document.createElement("div"); b.className = "lp"; b.textContent = brl.format(l.valor);
       row.append(a, b); box.appendChild(row);
     });
-    const tot = document.createElement("div"); tot.className = "total";
+    const tot = document.createElement("div"); tot.className = "total"; tot.style.cssText = "display:flex;justify-content:space-between;font-weight:700;font-size:1.25rem;padding:10px 0";
     const t1 = document.createElement("span"); t1.textContent = "Total";
     const t2 = document.createElement("span"); t2.textContent = brl.format(state.recap.total);
     tot.append(t1, t2); box.appendChild(tot);
@@ -592,13 +599,15 @@ function orderData() {
     itens, taxa, total: t
   };
 }
-function saveOrder() {
-  if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey) return;
+/* Grava o pedido no sistema. Devolve true só se o sistema confirmou (assim sabemos se a cozinha vai receber). */
+async function saveOrder() {
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey) return false;
   const h = { apikey: CONFIG.supabaseKey, "Content-Type": "application/json", Prefer: "return=minimal" };
   if (CONFIG.supabaseKey.startsWith("eyJ")) h.Authorization = "Bearer " + CONFIG.supabaseKey;
   try {
-    fetch(CONFIG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/pedidos", { method: "POST", keepalive: true, headers: h, body: JSON.stringify(orderData()) }).catch(() => {});
-  } catch (e) {}
+    const r = await fetch(CONFIG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/pedidos", { method: "POST", keepalive: true, headers: h, body: JSON.stringify(orderData()) });
+    return !!(r && r.ok);
+  } catch (e) { return false; }
 }
 
 function updateSendLink() {
@@ -643,11 +652,8 @@ $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sh
     if (id === "fNome") $("formErr").textContent = "";
   });
 });
-$("send").addEventListener("click", (e) => {
-  if (!validate()) { e.preventDefault(); return; }
-  updateSendLink();
-  saveOrder();
-  /* o pedido foi enviado: guarda só um resumo para mostrar e limpa o carrinho */
+/* Depois que o pedido saiu: guarda só um resumo para mostrar e limpa o carrinho */
+function finalizarEnvio(porWhatsapp) {
   const t = totals();
   state.lastHref = $("send").href;
   state.recap = { mesa: $("fMesa").value.trim(), total: t.t, linhas: Object.entries(state.cart).map(([k, q]) => {
@@ -656,10 +662,35 @@ $("send").addEventListener("click", (e) => {
     return { txt: q + "x " + it.nome + (d.length ? " (" + d.join(", ") + ")" : ""), valor: q * priceOf(it, o) };
   }) };
   if (t.taxa) state.recap.linhas.push({ txt: "Taxa de embalagem", valor: t.taxa });
-  $("reopenWa").href = state.lastHref;
-  state.enviado = true; state.cart = {}; guardarCarrinho(); $("fObs").value = "";
+  $("sentTexto").innerHTML = porWhatsapp
+    ? "<b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente."
+    : "<b>Pedido enviado!</b> Ele já chegou na cozinha. Em breve levamos até a sua mesa.";
+  $("reopenWa").hidden = !porWhatsapp;
+  if (porWhatsapp) $("reopenWa").href = state.lastHref;
+  state.enviado = true; state.fallback = false; state.cart = {}; guardarCarrinho(); $("fObs").value = "";
+  $("formErr").textContent = "";
   $("orderForm").hidden = true; $("sent").hidden = false;
   renderAll();
+}
+$("send").addEventListener("click", (e) => {
+  if (!validate()) { e.preventDefault(); return; }
+  updateSendLink();
+  saveOrder();
+  finalizarEnvio(true);
+});
+let enviandoAgora = false;   /* trava: um toque duplo não cria dois pedidos */
+$("sendDireto").addEventListener("click", async () => {
+  if (enviandoAgora || !validate()) return;
+  enviandoAgora = true;
+  const b = $("sendDireto"), txt = b.textContent;
+  b.disabled = true; b.textContent = "Enviando..."; $("formErr").textContent = "";
+  let gravou = false;
+  try { gravou = await saveOrder(); } finally { enviandoAgora = false; }
+  b.disabled = false; b.textContent = txt;
+  if (gravou) { updateSendLink(); finalizarEnvio(false); return; }
+  /* o sistema não confirmou: libera o WhatsApp para o pedido chegar de qualquer jeito */
+  state.fallback = true; updateSendLink();
+  $("formErr").textContent = "Não conseguimos enviar o pedido agora. Toque em “Enviar pedido pelo WhatsApp” para ele chegar até nós.";
 });
 $("copy").onclick = async () => {
   if (!validate()) return;

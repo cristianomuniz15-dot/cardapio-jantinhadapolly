@@ -16,6 +16,7 @@
   --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.4; }
 button, input { font: inherit; color: inherit; }
@@ -356,7 +357,12 @@ function contasAbertas() {
 /* Número do pedido: reinicia em #1 a cada dia de vendas (o dia começa em HORA_VIRADA). O número "de verdade" do banco continua crescendo; este é só o que aparece. */
 const NUMDIA = new Map();
 const nPed = (o) => o.numdia || o.numero;
-const horaDia = (o) => hora(o.criado_em) + (chaveDia(o.criado_em) !== chaveDia(new Date().toISOString()) ? " · ontem" : "");
+function horaDia(o) {
+  const k = chaveDia(o.criado_em), hojeK = chaveDia(new Date().toISOString());
+  if (k === hojeK) return hora(o.criado_em);
+  const ontemK = chaveDia(new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+  return hora(o.criado_em) + " · " + (k === ontemK ? "ontem" : new Date(o.criado_em).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }));
+}
 async function atualizarNumeracao() {
   const ini = addDias(inicioDoDia(new Date()), -1).toISOString();   /* início do dia anterior: todos os pedidos dos dias exibidos */
   const r = await api("/rest/v1/pedidos?select=id,numero,criado_em&criado_em=gte." + encodeURIComponent(ini) + "&order=numero.asc&limit=1000");
@@ -445,6 +451,11 @@ async function load() {
     const r = await api("/rest/v1/pedidos?select=*&criado_em=gte." + encodeURIComponent(desde) + "&order=criado_em.desc&limit=200");
     if (!r.ok) throw new Error("falha");
     orders = await r.json();
+    /* Pendências antigas (conta de mesa ainda aberta ou pedido sem finalizar) continuam aparecendo até serem resolvidas */
+    try {
+      const r2 = await api("/rest/v1/pedidos?select=*&criado_em=lt." + encodeURIComponent(desde) + "&status=neq.cancelado&or=" + encodeURIComponent("(and(mesa.not.is.null,pagamento.is.null),status.in.(novo,preparo,pronto))") + "&order=criado_em.desc&limit=200");
+      if (r2.ok) { const velhos = await r2.json(), ids = new Set(orders.map(o => o.id)); velhos.forEach(o => { if (!ids.has(o.id)) orders.push(o); }); }
+    } catch (e) { /* se falhar, mostra só os recentes */ }
     if (orders.some(o => !NUMDIA.has(o.id))) await atualizarNumeracao();
     orders.forEach(o => { o.numdia = NUMDIA.get(o.id) || o.numero; });
     /* Adicional feito pelo atendente só com bebida: não passa por preparo, já nasce "entregue" */
