@@ -56,6 +56,12 @@ main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, mi
 .hora { color: var(--muted); font-weight: 600; }
 .local { font-weight: 700; font-size: 1.1rem; margin-top: 2px; }
 .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; background: var(--cinza); color: #fff; }
+.badge.beb { margin-left: 6px; }
+.pay-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.pay-opts .btn { width: 100%; }
+.card.conta { border-left-color: var(--ouro); }
+.ped-h { color: var(--muted); font-weight: 600; font-size: .9rem; margin-top: 8px; }
+.warn { background: var(--bg); color: #FF8A80; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-weight: 600; }
 .badge.adic { background: #fff; color: #B3150F; margin-left: 6px; }
 .badge.novo { background: var(--brasa); }
 .badge.preparo { background: var(--ouro); color: #1E1500; }
@@ -126,6 +132,20 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
   <main id="list" aria-live="polite"></main>
 </div>
 
+<dialog id="payDlg" aria-labelledby="payTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="payTitle">Fechar conta</h2>
+      <button class="btn ghost small" id="payClose" type="button">Cancelar</button>
+    </div>
+    <div class="tot"><span>Total da conta</span><span id="payTotal">R$ 0,00</span></div>
+    <p class="warn" id="payWarn" hidden></p>
+    <div class="pay-opts" id="payOpts"></div>
+    <p class="err" id="payErr" role="alert"></p>
+    <button class="btn green" id="payOk" type="button" disabled>Confirmar pagamento</button>
+  </div>
+</dialog>
+
 <dialog id="addDlg" aria-labelledby="addTitle">
   <div class="dlg">
     <div class="dlg-head">
@@ -183,9 +203,26 @@ const isAdic = (o) => /^ADICIONAL/i.test(o.observacoes || "");
 const obsTxt = (o) => (o.observacoes || "").replace(/^ADICIONAL\s*(—\s*)?/i, "").trim();
 function contaMesa(o) {
   const k = (x) => (x.cliente || "").trim().toLowerCase();
-  const g = orders.filter(x => (x.mesa || "") === (o.mesa || "") && k(x) === k(o) && x.status !== "cancelado");
+  const g = orders.filter(x => x.mesa && x.mesa === o.mesa && k(x) === k(o) && !x.pagamento && x.status !== "cancelado");
   return { n: g.length, total: g.reduce((a, x) => a + Number(x.total), 0) };
 }
+/* Contas abertas = pedidos de mesa que ainda não tiveram o pagamento registrado, agrupados por mesa + cliente */
+const normNome = (x) => (x.cliente || "").trim().toLowerCase();
+function contasAbertas() {
+  const m = new Map();
+  orders.filter(o => o.mesa && !o.pagamento && o.status !== "cancelado").forEach(o => {
+    const k = o.mesa + "|" + normNome(o);
+    if (!m.has(k)) m.set(k, { mesa: o.mesa, cliente: o.cliente, pedidos: [] });
+    m.get(k).pedidos.push(o);
+  });
+  return [...m.values()].map(c => {
+    c.pedidos.sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+    c.total = c.pedidos.reduce((a, o) => a + Number(o.total), 0);
+    c.emAndamento = c.pedidos.filter(o => ATIVOS.includes(o.status) && !soBebida(o)).length;
+    return c;
+  }).sort((a, b) => new Date(a.pedidos[0].criado_em) - new Date(b.pedidos[0].criado_em));
+}
+const soBebida = (o) => { const p = partesOf(o); return p.length > 0 && p.every(x => x.setor === "bebidas"); };
 const partesDoSetor = (o, st) => partesOf(o).filter(p => p.setor === st);
 const doMeuSetor = (o) => VIEW === "todos" || partesDoSetor(o, VIEW).length > 0;
 
@@ -269,9 +306,10 @@ async function setStatus(o, st) {
 /* ============ TELA ============ */
 const ATIVOS = ["novo", "preparo", "pronto"];
 function renderTabs() {
-  const n = (f) => orders.filter(o => doMeuSetor(o) && (f === "todos" ? true : f === "andamento" ? ATIVOS.includes(o.status) : o.status === f)).length;
+  const n = (f) => f === "contas" ? contasAbertas().length : orders.filter(o => doMeuSetor(o) && (f === "todos" ? true : f === "andamento" ? ATIVOS.includes(o.status) : o.status === f)).length;
   const el = $("tabs"); el.innerHTML = "";
-  [["andamento", "Em andamento"], ["entregue", "Entregues"], ["todos", "Todos (24 h)"]].forEach(([k, label]) => {
+  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues"], ["todos", "Todos (24 h)"]]);
+  abas.forEach(([k, label]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "tab";
     b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + " (" + n(k) + ")";
     b.onclick = () => { filter = k; render(); };
@@ -283,6 +321,7 @@ function render() {
   const abertos = orders.filter(o => o.status === "novo" && doMeuSetor(o)).length;
   document.title = (abertos ? "(" + abertos + ") " : "") + (VIEW === "todos" ? "Caixa" : SETORES[VIEW]) + " — " + NOME_LOJA;
   const list = $("list"); list.innerHTML = "";
+  if (filter === "contas" && VIEW === "todos") { renderContas(list); return; }
   const vis = orders.filter(o => doMeuSetor(o) && (filter === "todos" ? true : filter === "andamento" ? ATIVOS.includes(o.status) : o.status === filter));
   if (!vis.length) {
     const p = document.createElement("p"); p.className = "empty";
@@ -303,6 +342,7 @@ function card(o) {
   c.appendChild(loc);
   const bd = mk("span", "badge " + o.status, STATUS[o.status] || o.status); c.appendChild(bd);
   if (isAdic(o)) c.appendChild(mk("span", "badge adic", "ADICIONAL"));
+  if (VIEW === "todos" && soBebida(o)) c.appendChild(mk("span", "badge beb", "SÓ BEBIDA"));
   const ul = mk("ul", "itens");
   if (VIEW === "todos") {
     (o.itens || []).forEach(i => {
@@ -324,9 +364,9 @@ function card(o) {
     c.appendChild(tot);
     const pg = mk("div", "hora", "Pagamento: " + (o.pagamento || (o.mesa ? "na hora de fechar a conta" : "—")) + (Number(o.taxa) ? " · inclui embalagem " + brl.format(o.taxa) : ""));
     pg.style.marginBottom = "10px"; c.appendChild(pg);
-    const g = contaMesa(o);
+    const g = (o.mesa && !o.pagamento) ? contaMesa(o) : { n: 0 };
     if (g.n > 1) {
-      const cm = mk("div", "hora", (o.mesa ? "Conta da mesa " + o.mesa : "Conta de " + o.cliente) + " (" + g.n + " pedidos): " + brl.format(g.total));
+      const cm = mk("div", "hora", "Conta aberta da mesa " + o.mesa + " (" + g.n + " pedidos): " + brl.format(g.total));
       cm.style.cssText = "margin-bottom:10px;color:var(--ouro);font-weight:700"; c.appendChild(cm);
     }
   }
@@ -334,9 +374,14 @@ function card(o) {
   const acts = mk("div", "acts");
   const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
   if (VIEW === "todos") {
-    if (o.status === "novo") add("Iniciar preparo", "gold", () => setStatus(o, "preparo"));
-    if (o.status === "preparo") add("Marcar pronto", "green", () => setStatus(o, "pronto"));
-    if (o.status === "pronto") add("Entregue", "green", () => setStatus(o, "entregue"));
+    if (soBebida(o)) {
+      /* só bebida: não passa por preparo, vai direto para entregue */
+      if (ATIVOS.includes(o.status)) add("Entregue", "green", () => setStatus(o, "entregue"));
+    } else {
+      if (o.status === "novo") add("Iniciar preparo", "gold", () => setStatus(o, "preparo"));
+      if (o.status === "preparo") add("Marcar pronto", "green", () => setStatus(o, "pronto"));
+      if (o.status === "pronto") add("Entregue", "green", () => setStatus(o, "entregue"));
+    }
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
     add("Cupom completo", "ghost", () => printTicket(o));
     ["churrasqueira", "cozinha"].forEach(st => { if (partesDoSetor(o, st).length) add("Imprimir " + SETORES[st].toLowerCase(), "ghost", () => printSetor(o, st)); });
@@ -412,6 +457,109 @@ $("voiceBtn").onclick = () => {
 };
 paintToggles();
 
+/* ============ CONTAS DA MESA: fechar conta e imprimir conferência ============ */
+function renderContas(list) {
+  const cs = contasAbertas();
+  if (!cs.length) { list.appendChild(mk("p", "empty", "Nenhuma conta aberta. As contas das mesas aparecem aqui até serem fechadas.")); return; }
+  cs.forEach(c => list.appendChild(contaCard(c)));
+}
+function contaCard(c) {
+  const el = mk("article", "card conta");
+  const head = mk("div", "card-head");
+  head.append(mk("span", "num", "Mesa " + c.mesa), mk("span", "hora", c.pedidos.length + (c.pedidos.length > 1 ? " pedidos" : " pedido")));
+  el.appendChild(head);
+  el.appendChild(mk("div", "local", c.cliente));
+  c.pedidos.forEach(o => {
+    el.appendChild(mk("div", "ped-h", "Pedido #" + o.numero + " · " + hora(o.criado_em) + " · " + (STATUS[o.status] || o.status) + (isAdic(o) ? " · adicional" : "")));
+    const ul = mk("ul", "itens"); ul.style.margin = "4px 0"; ul.style.padding = "4px 0";
+    (o.itens || []).forEach(i => { const li = mk("li", "", i.qtd + "x " + i.nome); if (i.detalhe) li.appendChild(mk("small", "", i.detalhe)); ul.appendChild(li); });
+    el.appendChild(ul);
+  });
+  if (c.emAndamento) el.appendChild(mk("div", "warn", c.emAndamento + (c.emAndamento > 1 ? " pedidos ainda não foram entregues." : " pedido ainda não foi entregue.")));
+  const tot = mk("div", "tot"); tot.append(mk("span", "", "Total da conta"), mk("span", "", brl.format(c.total))); el.appendChild(tot);
+  const acts = mk("div", "acts");
+  const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
+  add("Fechar conta", "green", () => openPay(c));
+  add("Imprimir conta", "ghost", () => printConta(c));
+  add("Adicionar itens", "gold", () => openAdd(c.pedidos[c.pedidos.length - 1]));
+  el.appendChild(acts);
+  return el;
+}
+const FORMAS = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheiro", "Misto"];
+const PAY = { c: null, forma: "" };
+function paintPay() {
+  const c = PAY.c;
+  $("payTitle").textContent = "Fechar conta — Mesa " + c.mesa + " · " + c.cliente;
+  $("payTotal").textContent = brl.format(c.total);
+  $("payWarn").hidden = !c.emAndamento;
+  $("payWarn").textContent = c.emAndamento + (c.emAndamento > 1 ? " pedidos ainda não foram entregues." : " pedido ainda não foi entregue.");
+}
+function openPay(c) {
+  PAY.c = c; PAY.forma = ""; $("payErr").textContent = ""; $("payOk").disabled = true;
+  paintPay();
+  const box = $("payOpts"); box.innerHTML = "";
+  FORMAS.forEach(f => {
+    const b = mk("button", "btn ghost", f); b.type = "button"; b.setAttribute("aria-pressed", "false");
+    b.onclick = () => { PAY.forma = f; [...box.children].forEach(x => x.setAttribute("aria-pressed", String(x === b))); $("payOk").disabled = false; };
+    box.appendChild(b);
+  });
+  $("payDlg").showModal();
+}
+async function fecharConta() {
+  if (!PAY.c || !PAY.forma) return;
+  const forma = PAY.forma;
+  /* confere de novo: pode ter entrado um pedido adicional enquanto a janela estava aberta */
+  const atual = contasAbertas().find(x => x.mesa === PAY.c.mesa && normNome(x) === normNome(PAY.c));
+  if (!atual) { $("payDlg").close(); $("status").textContent = "Esta conta já foi fechada."; render(); return; }
+  if (Math.abs(atual.total - PAY.c.total) > 0.001) {
+    PAY.c = atual; paintPay(); $("payErr").textContent = "A conta mudou (novo pedido). Confira o novo total e confirme de novo."; return;
+  }
+  $("payOk").disabled = true; $("payErr").textContent = "";
+  try {
+    const ids = atual.pedidos.map(o => o.id).join(",");
+    const r = await api("/rest/v1/pedidos?id=in.(" + ids + ")", { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ pagamento: forma }) });
+    if (!r.ok) throw new Error("falha");
+    atual.pedidos.forEach(o => { o.pagamento = forma; });
+    $("payDlg").close();
+    $("status").textContent = "Conta da mesa " + atual.mesa + " fechada (" + forma + ", " + brl.format(atual.total) + ").";
+    $("status").classList.remove("bad");
+    render(); await load();
+  } catch (e) {
+    $("payErr").textContent = "Não foi possível fechar a conta. Confira a conexão e tente de novo.";
+    $("payOk").disabled = false;
+  }
+}
+function printConta(c) {
+  const t = $("ticket"); t.innerHTML = "";
+  const line = (cls, txt) => t.appendChild(mk("div", cls, txt));
+  const hr = () => t.appendChild(document.createElement("hr"));
+  line("c big", NOME_LOJA);
+  line("c b", "CONFERÊNCIA DE CONTA");
+  line("c", "Não é documento fiscal");
+  hr();
+  line("b big", "MESA " + c.mesa);
+  line("", "Cliente: " + c.cliente);
+  line("", new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  hr();
+  const m = new Map();
+  c.pedidos.forEach(o => (o.itens || []).forEach(i => {
+    const k = i.nome + "|" + (i.detalhe || "");
+    const e = m.get(k) || { nome: i.nome, det: i.detalhe || "", qtd: 0, sub: 0 };
+    e.qtd += Number(i.qtd); e.sub += Number(i.subtotal); m.set(k, e);
+  }));
+  m.forEach(e => {
+    const r = mk("div", "row"); r.append(mk("span", "", e.qtd + "x " + e.nome), mk("span", "", brl.format(e.sub))); t.appendChild(r);
+    if (e.det) line("", "   " + e.det);
+  });
+  hr();
+  const r = mk("div", "row big"); r.append(mk("span", "", "TOTAL"), mk("span", "", brl.format(c.total))); t.appendChild(r);
+  hr();
+  line("c", "Obrigado pela preferência!");
+  window.print();
+}
+$("payOk").onclick = fecharConta;
+$("payClose").onclick = () => $("payDlg").close();
+
 /* ============ ADICIONAR ITENS A UM PEDIDO (feito pelo atendente) ============ */
 const allItems = {};
 MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
@@ -482,7 +630,7 @@ async function sendAdd() {
   const L = addLinhas();
   if (!L.length) { $("addErr").textContent = "Escolha pelo menos um item."; return; }
   const o = AD.o, obs = $("addObs").value.trim();
-  const body = { cliente: o.cliente, mesa: o.mesa || null, pagamento: o.pagamento || null,
+  const body = { cliente: o.cliente, mesa: o.mesa || null, pagamento: o.mesa ? null : (o.pagamento || null),
     observacoes: "ADICIONAL" + (obs ? " — " + obs : ""), itens: L, taxa: 0, total: L.reduce((a, l) => a + l.subtotal, 0) };
   /* grava como pedido novo (mesma regra do cardápio do cliente) */
   const h = { apikey: CFG.key, "Content-Type": "application/json", Prefer: "return=minimal" };
