@@ -264,6 +264,13 @@ async function atualizarNumeracao() {
   NUMDIA.clear();
   lista.forEach(o => { const k = chaveDia(o.criado_em), n = (cont.get(k) || 0) + 1; cont.set(k, n); NUMDIA.set(o.id, n); });
 }
+/* "Entregues" e "Todos" mostram só o dia de hoje (zera todo dia). "Em andamento" e "Contas abertas" mostram tudo que ainda está pendente. */
+const ehHoje = (o) => chaveDia(o.criado_em) === chaveDia(new Date().toISOString());
+function passaFiltro(o, f) {
+  if (f === "andamento") return ATIVOS.includes(o.status);
+  if (f === "entregue") return o.status === "entregue" && ehHoje(o);
+  return ehHoje(o);   /* todos de hoje */
+}
 const soBebida = (o) => { const p = partesOf(o); return p.length > 0 && p.every(x => x.setor === "bebidas"); };
 const partesDoSetor = (o, st) => partesOf(o).filter(p => p.setor === st);
 const doMeuSetor = (o) => VIEW === "todos" || partesDoSetor(o, VIEW).length > 0;
@@ -370,9 +377,9 @@ async function setStatus(o, st) {
 /* ============ TELA ============ */
 const ATIVOS = ["novo", "preparo", "pronto"];
 function renderTabs() {
-  const n = (f) => f === "contas" ? contasAbertas().length : orders.filter(o => doMeuSetor(o) && (f === "todos" ? true : f === "andamento" ? ATIVOS.includes(o.status) : o.status === f)).length;
+  const n = (f) => f === "contas" ? contasAbertas().length : orders.filter(o => doMeuSetor(o) && passaFiltro(o, f)).length;
   const el = $("tabs"); el.innerHTML = "";
-  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues"], ["todos", "Todos (24 h)"]], (VIEW === "todos" && isDono()) ? [["relatorio", "Relatórios"]] : []);
+  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues hoje"], ["todos", "Todos de hoje"]], (VIEW === "todos" && isDono()) ? [["relatorio", "Relatórios"]] : []);
   abas.forEach(([k, label]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "tab";
     b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + (k === "relatorio" ? "" : " (" + n(k) + ")");
@@ -387,7 +394,7 @@ function render() {
   const list = $("list"); list.innerHTML = "";
   if (filter === "contas" && VIEW === "todos") { renderContas(list); return; }
   if (filter === "relatorio" && VIEW === "todos" && isDono()) { renderRelatorio(list); return; }
-  const vis = orders.filter(o => doMeuSetor(o) && (filter === "todos" ? true : filter === "andamento" ? ATIVOS.includes(o.status) : o.status === filter));
+  const vis = orders.filter(o => doMeuSetor(o) && passaFiltro(o, filter));
   if (!vis.length) {
     const p = document.createElement("p"); p.className = "empty";
     p.textContent = filter === "andamento" ? "Nenhum pedido em andamento. Os novos aparecem aqui sozinhos." : "Nenhum pedido nesta lista.";
@@ -556,10 +563,23 @@ function rotuloPeriodo(ini, fim) {
   const ult = addDias(fim, -1);
   return fmtData(ini) === fmtData(ult) ? fmtData(ini) + " (" + ini.toLocaleDateString("pt-BR", { weekday: "long" }) + ")" : fmtData(ini) + " a " + fmtData(ult);
 }
+/* Tipos para o relatório de quantidades (ligados ao cardápio pelo nome do item) */
+const GRUPOS = ["Jantinhas", "Espetos avulsos", "Porções", "Caldos", "Bebidas"];
+const GRUPO_CAT = { jantinhas: "Jantinhas", espetinhos: "Espetos avulsos", porcoes: "Porções", caldos: "Caldos", bebidas: "Bebidas" };
+const GRUPO_NOME = new Map(), ITEM_POR_NOME = new Map();
+MENU.forEach(c => c.secoes.forEach(sc => sc.itens.forEach(i => {
+  GRUPO_NOME.set(i.nome, c.id === "jantinhas" && /^Espetinho/i.test(i.nome) ? "Espetos avulsos" : GRUPO_CAT[c.id]);
+  ITEM_POR_NOME.set(i.nome, i);
+})));
+function grupoDoItem(i) {
+  if (GRUPO_NOME.has(i.nome)) return GRUPO_NOME.get(i.nome);
+  const st = ((i.partes || [])[0] || {}).setor;   /* item que saiu do cardápio: usa o setor */
+  return st === "churrasqueira" ? "Espetos avulsos" : st === "bebidas" ? "Bebidas" : "Outros";
+}
 async function buscarPedidos(ini, fim) {
-  const out = [], pag = 1000;
+  const out = [], pag = 500;
   for (let off = 0; ; off += pag) {
-    const url = "/rest/v1/pedidos?select=criado_em,total,pagamento,status&status=neq.cancelado"
+    const url = "/rest/v1/pedidos?select=criado_em,total,pagamento,status,itens&status=neq.cancelado"
       + "&criado_em=gte." + encodeURIComponent(ini.toISOString()) + "&criado_em=lt." + encodeURIComponent(fim.toISOString())
       + "&order=criado_em.asc,id.asc&limit=" + pag + "&offset=" + off;
     const r = await api(url);
@@ -571,14 +591,23 @@ async function buscarPedidos(ini, fim) {
 }
 const chaveDia = (iso) => { const d = new Date(new Date(iso).getTime() - HORA_VIRADA * 3600 * 1000); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 function resumir(rows, ini, fim) {
-  const forma = new Map(), grupo = new Map(); let total = 0, aberto = 0;
+  const forma = new Map(), grupo = new Map(), qGrupo = {}, detalhe = new Map(); let total = 0, aberto = 0, churras = 0;
   const porMes = (fim - ini) > 62 * DIA_MS;
   rows.forEach(o => {
     const v = Number(o.total) || 0; total += v;
     const f = o.pagamento || ABERTA; if (!o.pagamento) aberto += v;
     const a = forma.get(f) || { valor: 0, n: 0 }; a.valor += v; a.n++; forma.set(f, a);
     const dk = chaveDia(o.criado_em), gk = porMes ? dk.slice(0, 7) : dk;
-    const g = grupo.get(gk) || { valor: 0, n: 0 }; g.valor += v; g.n++; grupo.set(gk, g);
+    const g = grupo.get(gk) || { valor: 0, n: 0, q: {} }; g.valor += v; g.n++; grupo.set(gk, g);
+    (o.itens || []).forEach(i => {
+      const q = Number(i.qtd) || 0, gr = grupoDoItem(i);
+      qGrupo[gr] = (qGrupo[gr] || 0) + q; g.q[gr] = (g.q[gr] || 0) + q;
+      const it = ITEM_POR_NOME.get(i.nome), tam = it && it.opcoes ? String(i.detalhe || "").split(", ")[0] : "";
+      const chave = gr + "|" + i.nome + (tam ? " (" + tam + ")" : "");
+      detalhe.set(chave, (detalhe.get(chave) || 0) + q);
+      if (Array.isArray(i.partes) && i.partes.length) i.partes.forEach(p => { if (p.setor === "churrasqueira") churras += Number(p.qtd) || 0; });
+      else if (gr === "Espetos avulsos") churras += q;
+    });
   });
   const nomes = FORMAS_REL.concat([...forma.keys()].filter(k => !FORMAS_REL.includes(k) && k !== ABERTA), [ABERTA]);
   const formas = nomes.filter(k => forma.has(k) || FORMAS_REL.slice(0, 4).includes(k)).map(k => ({ nome: k, valor: forma.has(k) ? forma.get(k).valor : 0, n: forma.has(k) ? forma.get(k).n : 0 }));
@@ -586,9 +615,12 @@ function resumir(rows, ini, fim) {
     const [y, m, d] = k.split("-").map(Number); const g = grupo.get(k);
     const rotulo = porMes ? new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
       : new Date(y, m - 1, d).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
-    return { rotulo, valor: g.valor, n: g.n };
+    return { rotulo, valor: g.valor, n: g.n, q: g.q };
   });
-  return { rotulo: rotuloPeriodo(ini, fim), total, aberto, pedidos: rows.length, formas, grupos, porMes, ini, fim };
+  const colunas = GRUPOS.concat(qGrupo["Outros"] ? ["Outros"] : []);
+  const itens = colunas.map(n => ({ nome: n, qtd: qGrupo[n] || 0 }));
+  const det = colunas.map(n => ({ nome: n, itens: [...detalhe.entries()].filter(([k]) => k.startsWith(n + "|")).map(([k, q]) => ({ nome: k.slice(n.length + 1), qtd: q })).sort((x, y) => y.qtd - x.qtd) })).filter(g => g.itens.length);
+  return { rotulo: rotuloPeriodo(ini, fim), total, aberto, pedidos: rows.length, formas, grupos, porMes, ini, fim, colunas, itens, det, churras };
 }
 async function carregarRelatorio() {
   if (REL.carregando) return;
@@ -630,15 +662,41 @@ function pintarRelatorio() {
     tr.append(c1, celula("td", String(f.n), "v"), celula("td", brl.format(f.valor), "v"), celula("td", (d.total ? (f.valor / d.total * 100) : 0).toFixed(1).replace(".", ",") + "%", "v"));
     return tr;
   })));
+  body.appendChild(mk("h3", "", "Itens vendidos no período"));
+  const maxI = Math.max(1, ...d.itens.map(i => i.qtd));
+  body.appendChild(tabela(["Tipo", "Quantidade"], d.itens.map(i => {
+    const tr = document.createElement("tr");
+    const c1 = document.createElement("td"); c1.appendChild(document.createTextNode(i.nome));
+    const bar = mk("div", "barra"); bar.style.width = Math.round(i.qtd / maxI * 100) + "%"; c1.appendChild(bar);
+    tr.append(c1, celula("td", String(i.qtd), "v")); return tr;
+  })));
+  body.appendChild(mk("p", "rel-nota", "Espetos feitos na churrasqueira (avulsos + os que vão nas jantinhas): " + d.churras + ". Jantinha inteira e meia contam como 1 cada."));
   body.appendChild(mk("h3", "", d.porMes ? "Por mês" : "Por dia"));
   const maxG = Math.max(1, ...d.grupos.map(g => g.valor));
-  body.appendChild(d.grupos.length ? tabela([d.porMes ? "Mês" : "Dia", "Pedidos", "Valor"], d.grupos.map(g => {
-    const tr = document.createElement("tr");
-    const c1 = document.createElement("td"); c1.appendChild(document.createTextNode(g.rotulo));
-    const bar = mk("div", "barra"); bar.style.width = Math.round(g.valor / maxG * 100) + "%"; c1.appendChild(bar);
-    tr.append(c1, celula("td", String(g.n), "v"), celula("td", brl.format(g.valor), "v"));
-    return tr;
-  })) : mk("p", "rel-nota", "Nenhuma venda neste período."));
+  if (d.grupos.length) {
+    const tot = { n: 0, valor: 0, q: {} };
+    const linhas = d.grupos.map(g => {
+      tot.n += g.n; tot.valor += g.valor; d.colunas.forEach(c => { tot.q[c] = (tot.q[c] || 0) + (g.q[c] || 0); });
+      const tr = document.createElement("tr");
+      const c1 = document.createElement("td"); c1.appendChild(document.createTextNode(g.rotulo));
+      const bar = mk("div", "barra"); bar.style.width = Math.round(g.valor / maxG * 100) + "%"; c1.appendChild(bar);
+      tr.append(c1, celula("td", String(g.n), "v"), celula("td", brl.format(g.valor), "v"));
+      d.colunas.forEach(c => tr.appendChild(celula("td", String(g.q[c] || 0), "v")));
+      return tr;
+    });
+    const trT = document.createElement("tr"); trT.style.fontWeight = "700";
+    trT.append(celula("td", "Total"), celula("td", String(tot.n), "v"), celula("td", brl.format(tot.valor), "v"));
+    d.colunas.forEach(c => trT.appendChild(celula("td", String(tot.q[c] || 0), "v")));
+    body.appendChild(tabela([d.porMes ? "Mês" : "Dia", "Pedidos", "Valor"].concat(d.colunas), linhas.concat([trT])));
+  } else body.appendChild(mk("p", "rel-nota", "Nenhuma venda neste período."));
+  if (d.det.length) {
+    const dt = mk("details", ""); dt.appendChild(mk("summary", "", "Ver detalhe por item"));
+    d.det.forEach(g => {
+      dt.appendChild(mk("h3", "", g.nome));
+      dt.appendChild(tabela(["Item", "Quantidade"], g.itens.map(i => { const tr = document.createElement("tr"); tr.append(celula("td", i.nome), celula("td", String(i.qtd), "v")); return tr; })));
+    });
+    body.appendChild(dt);
+  }
   body.appendChild(mk("p", "rel-nota", "Conta os pedidos não cancelados. A forma de pagamento aparece quando a conta é fechada (ou, na retirada, a escolhida no pedido); enquanto isso o valor fica em \"A receber\". \"Misto\" são contas pagas com mais de uma forma. O dia de vendas começa às " + String(HORA_VIRADA).padStart(2, "0") + ":00."));
 }
 function montarRelatorio() {
@@ -687,7 +745,9 @@ function baixarCSV() {
     ["Total vendido (R$)", v(d.total)], ["Recebido (R$)", v(d.total - d.aberto)], ["A receber - contas abertas (R$)", v(d.aberto)], ["Pedidos", d.pedidos], [],
     ["Forma de pagamento", "Pedidos", "Valor (R$)", "%"]]
     .concat(d.formas.map(f => [f.nome, f.n, v(f.valor), (d.total ? f.valor / d.total * 100 : 0).toFixed(1).replace(".", ",")]))
-    .concat([[], [d.porMes ? "Mês" : "Dia", "Pedidos", "Valor (R$)"]], d.grupos.map(g => [g.rotulo, g.n, v(g.valor)]));
+    .concat([[], ["Itens vendidos", "Quantidade"]], d.itens.map(i => [i.nome, i.qtd]), [["Espetos feitos na churrasqueira (avulsos + das jantinhas)", d.churras]])
+    .concat([[], [d.porMes ? "Mês" : "Dia", "Pedidos", "Valor (R$)"].concat(d.colunas)], d.grupos.map(g => [g.rotulo, g.n, v(g.valor)].concat(d.colunas.map(c => g.q[c] || 0))))
+    .concat([[], ["Detalhe por item"], ["Tipo", "Item", "Quantidade"]], [].concat(...d.det.map(g => g.itens.map(i => [g.nome, i.nome, i.qtd]))));
   const csv = "\ufeff" + L.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(";")).join("\r\n");
   const iso = (x) => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
   const a = document.createElement("a");
@@ -710,6 +770,8 @@ function imprimirResumo() {
   row("", "Pedidos", String(d.pedidos));
   hr(); line("b", "POR FORMA DE PAGAMENTO");
   d.formas.forEach(f => row("", f.nome === ABERTA ? "A receber" : f.nome, brl.format(f.valor)));
+  hr(); line("b", "ITENS VENDIDOS");
+  d.itens.forEach(i => row("", i.nome, String(i.qtd)));
   hr(); line("b", d.porMes ? "POR MÊS" : "POR DIA");
   d.grupos.forEach(g => row("", g.rotulo, brl.format(g.valor)));
   window.print();
