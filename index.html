@@ -275,7 +275,10 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
     <div class="sent" id="sent" hidden>
       <p><b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente.</p>
       <p>Se quiser acrescentar mais alguma coisa depois, é só chamar o atendente.</p>
-      <button class="btn ghost" id="newOrder" type="button">Fazer novo pedido</button>
+      <div class="actions">
+        <a class="btn ghost" id="reopenWa" href="#" target="_blank" rel="noopener">Abrir o WhatsApp de novo</a>
+        <button class="btn ghost" id="newOrder" type="button">Fazer novo pedido</button>
+      </div>
     </div>
   </div>
 </dialog>
@@ -298,13 +301,16 @@ const CONFIG = {
 /* ============ ESTADO ============ */
 const $ = (id) => document.getElementById(id);
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const state = { tab: MENU[0].id, sel: {}, esp: {}, cart: {} };
+const state = { tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, recap: null, lastHref: "" };
 
 function store(key, val) {
   try { if (val === undefined) { const v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; }
 }
+/* O carrinho só é lembrado por algumas horas (o tempo de uma visita) e é apagado assim que o pedido é enviado. */
+const PRAZO_CARRINHO = 3 * 3600 * 1000, PRAZO_FORM = 6 * 3600 * 1000;
+function guardarCarrinho() { store("jp_cart", { t: Date.now(), cart: state.cart }); }
 const savedCart = store("jp_cart");
-if (savedCart && typeof savedCart === "object") state.cart = savedCart;
+if (savedCart && savedCart.cart && typeof savedCart.cart === "object" && Date.now() - (savedCart.t || 0) < PRAZO_CARRINHO) state.cart = savedCart.cart;
 
 const allItems = {};
 MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
@@ -319,9 +325,10 @@ function cleanCart() {
   });
 }
 function change(key, delta) {
+  state.enviado = false; state.recap = null;
   state.cart[key] = Math.max(0, (state.cart[key] || 0) + delta);
   if (!state.cart[key]) delete state.cart[key];
-  store("jp_cart", state.cart);
+  guardarCarrinho();
   renderAll();
 }
 function totals() {
@@ -446,6 +453,22 @@ function renderSums() {
 
 function renderLines() {
   const box = $("lines"); box.innerHTML = "";
+  if (state.enviado && state.recap) {
+    $("orderForm").hidden = true;
+    const h = document.createElement("p"); h.className = "empty"; h.style.fontWeight = "700"; h.textContent = "Pedido enviado" + (state.recap.mesa ? " — mesa " + state.recap.mesa : "");
+    box.appendChild(h);
+    state.recap.linhas.forEach(l => {
+      const row = document.createElement("div"); row.className = "line";
+      const a = document.createElement("div"); a.textContent = l.txt;
+      const b = document.createElement("div"); b.className = "lp"; b.textContent = brl.format(l.valor);
+      row.append(a, b); box.appendChild(row);
+    });
+    const tot = document.createElement("div"); tot.className = "total";
+    const t1 = document.createElement("span"); t1.textContent = "Total";
+    const t2 = document.createElement("span"); t2.textContent = brl.format(state.recap.total);
+    tot.append(t1, t2); box.appendChild(tot);
+    return;
+  }
   const entries = Object.entries(state.cart);
   $("orderForm").hidden = entries.length === 0;
   if (!entries.length) {
@@ -537,7 +560,7 @@ function renderAll() {
   cleanCart(); renderTabs(); renderMenu(); renderBar();
   if ($("sheet").open) {
     renderLines();
-    if (Object.keys(state.cart).length) updateSendLink(); else $("sent").hidden = true;
+    if (Object.keys(state.cart).length) updateSendLink(); else if (!state.enviado) $("sent").hidden = true;
   }
 }
 
@@ -548,7 +571,7 @@ $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sh
 ["fNome", "fMesa", "fPag", "fObs"].forEach(id => {
   $(id).addEventListener("input", () => {
     updateSendLink(); renderBar();
-    store("jp_form", { nome: $("fNome").value, mesa: $("fMesa").value, pag: $("fPag").value });
+    store("jp_form", { nome: $("fNome").value, mesa: $("fMesa").value, pag: $("fPag").value, t: Date.now() });
     if (id === "fNome") $("formErr").textContent = "";
   });
 });
@@ -556,7 +579,19 @@ $("send").addEventListener("click", (e) => {
   if (!validate()) { e.preventDefault(); return; }
   updateSendLink();
   saveOrder();
+  /* o pedido foi enviado: guarda só um resumo para mostrar e limpa o carrinho */
+  const t = totals();
+  state.lastHref = $("send").href;
+  state.recap = { mesa: $("fMesa").value.trim(), total: t.t, linhas: Object.entries(state.cart).map(([k, q]) => {
+    const { id, o, e } = parseKey(k); const it = allItems[id]; const d = [];
+    if (it.opcoes) d.push(it.opcoes[o].nome); if (e !== null) d.push("espeto: " + TRAD[e]);
+    return { txt: q + "x " + it.nome + (d.length ? " (" + d.join(", ") + ")" : ""), valor: q * priceOf(it, o) };
+  }) };
+  if (t.taxa) state.recap.linhas.push({ txt: "Taxa de embalagem", valor: t.taxa });
+  $("reopenWa").href = state.lastHref;
+  state.enviado = true; state.cart = {}; guardarCarrinho(); $("fObs").value = "";
   $("orderForm").hidden = true; $("sent").hidden = false;
+  renderAll();
 });
 $("copy").onclick = async () => {
   if (!validate()) return;
@@ -564,7 +599,7 @@ $("copy").onclick = async () => {
   catch (e) { $("formErr").textContent = "Não foi possível copiar. Use o botão do WhatsApp."; }
 };
 $("newOrder").onclick = () => {
-  state.cart = {}; store("jp_cart", state.cart); $("fObs").value = "";
+  state.enviado = false; state.recap = null; state.cart = {}; guardarCarrinho(); $("fObs").value = "";
   $("sheet").close(); renderAll();
 };
 
@@ -606,7 +641,8 @@ $("printQr").onclick = () => window.print();
 /* ============ INÍCIO ============ */
 $("waLink").href = "https://wa.me/" + CONFIG.whatsapp;
 const f = store("jp_form");
-if (f) { $("fNome").value = f.nome || ""; $("fMesa").value = f.mesa || ""; if (f.pag) $("fPag").value = f.pag; }
+const mesmaVisita = f && Date.now() - (f.t || 0) < PRAZO_FORM && (!urlMesa || !f.mesa || String(f.mesa) === String(urlMesa));
+if (mesmaVisita) { $("fNome").value = f.nome || ""; $("fMesa").value = f.mesa || ""; if (f.pag) $("fPag").value = f.pag; }
 if (urlMesa) { $("fMesa").value = urlMesa; $("mesaChip").textContent = "Você está na mesa " + urlMesa; $("mesaRow").hidden = false; }
 (function horario() {
   const h = new Date().getHours();

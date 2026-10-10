@@ -515,7 +515,7 @@ const DIA_MS = 24 * 3600 * 1000;
 const FORMAS_REL = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheiro", "Misto"];
 const ABERTA = "Conta aberta (ainda não paga)";
 const REL = { k: "hoje", de: "", ate: "", node: null, data: null, ts: 0, carregando: false };
-const PERIODOS = [["hoje", "Hoje"], ["ontem", "Ontem"], ["semana", "Esta semana"], ["semanaPassada", "Semana passada"], ["mes", "Este mês"], ["mesPassado", "Mês passado"], ["ano", "Este ano"], ["custom", "Escolher datas"]];
+const PERIODOS = [["hoje", "Hoje"], ["custom", "Escolher datas"]];
 const fmtData = (d) => d.toLocaleDateString("pt-BR");
 const addDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const n2 = (v) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -636,6 +636,11 @@ function montarRelatorio() {
     b.onclick = () => {
       REL.k = k; [...bar.children].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
       $("relCustom").hidden = k !== "custom";
+      if (k === "custom") {
+        const iso = (x) => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+        if (!$("relDe").value) $("relDe").value = iso(inicioDoDia(new Date()));
+        if (!$("relAte").value) $("relAte").value = iso(inicioDoDia(new Date()));
+      }
       if (k !== "custom") carregarRelatorio();
     };
     bar.appendChild(b);
