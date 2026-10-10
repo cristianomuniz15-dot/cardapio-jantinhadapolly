@@ -147,7 +147,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <span id="status" role="status"></span>
     <button class="btn ghost small" id="autoBtn" type="button" aria-pressed="false">Impressão automática: desligada</button>
     <button class="btn ghost small" id="voiceBtn" type="button" aria-pressed="false">Ler pedidos em voz alta</button>
-    <button class="btn ghost small" id="soundBtn" type="button" aria-pressed="false">Ativar som</button>
+    <button class="btn ghost small" id="soundBtn" type="button" aria-pressed="true" title="Toque para desligar ou ligar o aviso sonoro de pedido novo">Som ativado</button>
     <button class="btn ghost small" id="refreshBtn" type="button">Atualizar</button>
     <button class="btn ghost small" id="logoutBtn" type="button">Sair</button>
   </header>
@@ -252,6 +252,18 @@ function contasAbertas() {
     return c;
   }).sort((a, b) => new Date(a.pedidos[0].criado_em) - new Date(b.pedidos[0].criado_em));
 }
+/* Número do pedido: reinicia em #1 a cada dia de vendas (o dia começa em HORA_VIRADA). O número "de verdade" do banco continua crescendo; este é só o que aparece. */
+const NUMDIA = new Map();
+const nPed = (o) => o.numdia || o.numero;
+const horaDia = (o) => hora(o.criado_em) + (chaveDia(o.criado_em) !== chaveDia(new Date().toISOString()) ? " · ontem" : "");
+async function atualizarNumeracao() {
+  const ini = addDias(inicioDoDia(new Date()), -1).toISOString();   /* início do dia anterior: todos os pedidos dos dias exibidos */
+  const r = await api("/rest/v1/pedidos?select=id,numero,criado_em&criado_em=gte." + encodeURIComponent(ini) + "&order=numero.asc&limit=1000");
+  if (!r.ok) return;
+  const lista = await r.json(), cont = new Map();
+  NUMDIA.clear();
+  lista.forEach(o => { const k = chaveDia(o.criado_em), n = (cont.get(k) || 0) + 1; cont.set(k, n); NUMDIA.set(o.id, n); });
+}
 const soBebida = (o) => { const p = partesOf(o); return p.length > 0 && p.every(x => x.setor === "bebidas"); };
 const partesDoSetor = (o, st) => partesOf(o).filter(p => p.setor === st);
 const doMeuSetor = (o) => VIEW === "todos" || partesDoSetor(o, VIEW).length > 0;
@@ -318,6 +330,8 @@ async function load() {
     const r = await api("/rest/v1/pedidos?select=*&criado_em=gte." + encodeURIComponent(desde) + "&order=criado_em.desc&limit=200");
     if (!r.ok) throw new Error("falha");
     orders = await r.json();
+    if (orders.some(o => !NUMDIA.has(o.id))) await atualizarNumeracao();
+    orders.forEach(o => { o.numdia = NUMDIA.get(o.id) || o.numero; });
     /* Adicional feito pelo atendente só com bebida: não passa por preparo, já nasce "entregue" */
     if (VIEW === "todos") {
       const auto = orders.filter(o => o.status === "novo" && isAdic(o) && soBebida(o));
@@ -387,7 +401,7 @@ function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 function card(o) {
   const c = mk("article", "card s-" + o.status);
   const head = mk("div", "card-head");
-  head.append(mk("span", "num", "Pedido #" + o.numero), mk("span", "hora", hora(o.criado_em)));
+  head.append(mk("span", "num", "Pedido #" + nPed(o)), mk("span", "hora", horaDia(o)));
   c.appendChild(head);
   const loc = mk("div", "local", (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente);
   c.appendChild(loc);
@@ -436,7 +450,7 @@ function card(o) {
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
     add("Imprimir pedido", "ghost", () => printProducao(o));
     if (!o.mesa) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
-    if (ATIVOS.includes(o.status)) add("Cancelar", "ghost", () => { if (confirm("Cancelar o pedido #" + o.numero + "?")) setStatus(o, "cancelado"); });
+    if (ATIVOS.includes(o.status)) add("Cancelar", "ghost", () => { if (confirm("Cancelar o pedido #" + nPed(o) + "?")) setStatus(o, "cancelado"); });
   } else {
     add("Reimprimir", "ghost", () => printSetor(o, VIEW));
   }
@@ -451,7 +465,7 @@ function printTicket(o) {
   const hr = () => t.appendChild(document.createElement("hr"));
   line("c big", NOME_LOJA);
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
-  line("c", "Pedido #" + o.numero + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
   line("", "Cliente: " + o.cliente);
@@ -485,7 +499,7 @@ function runQ() {
 function speak(o) {
   if (!("speechSynthesis" in window)) return;
   const itens = (VIEW === "todos" ? partesOf(o) : partesDoSetor(o, VIEW)).map(p => p.qtd + " " + p.txt + (p.nota ? ", " + p.nota : "")).join(". ");
-  const txt = (isAdic(o) ? "Pedido adicional " : "Novo pedido ") + o.numero + ". " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + ". " + itens + "." + (obsTxt(o) ? " Observação: " + obsTxt(o) : "");
+  const txt = (isAdic(o) ? "Pedido adicional " : "Novo pedido ") + nPed(o) + ". " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + ". " + itens + "." + (obsTxt(o) ? " Observação: " + obsTxt(o) : "");
   const u = new SpeechSynthesisUtterance(txt); u.lang = "pt-BR"; u.rate = 0.95;
   window.speechSynthesis.speak(u);
 }
@@ -714,7 +728,7 @@ function contaCard(c) {
   el.appendChild(head);
   el.appendChild(mk("div", "local", c.cliente));
   c.pedidos.forEach(o => {
-    el.appendChild(mk("div", "ped-h", "Pedido #" + o.numero + " · " + hora(o.criado_em) + " · " + (STATUS[o.status] || o.status) + (isAdic(o) ? " · adicional" : "")));
+    el.appendChild(mk("div", "ped-h", "Pedido #" + nPed(o) + " · " + horaDia(o) + " · " + (STATUS[o.status] || o.status) + (isAdic(o) ? " · adicional" : "")));
     const ul = mk("ul", "itens"); ul.style.margin = "4px 0"; ul.style.padding = "4px 0";
     (o.itens || []).forEach(i => { const li = mk("li", "", i.qtd + "x " + i.nome); if (i.detalhe) li.appendChild(mk("small", "", i.detalhe)); ul.appendChild(li); });
     el.appendChild(ul);
@@ -814,7 +828,7 @@ const parseKey = (k) => { const [id, o, e] = k.split("|"); return { id, o: +o, e
 function openAdd(o) {
   AD.o = o; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {};
   $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
-  $("addTitle").textContent = "Adicionar itens — Pedido #" + o.numero + " · " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente;
+  $("addTitle").textContent = "Adicionar itens — Pedido #" + nPed(o) + " · " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente;
   renderAdd(); $("addDlg").showModal();
 }
 function addChange(key, d) {
@@ -884,7 +898,7 @@ async function sendAdd() {
     const r = await fetch(CFG.url + "/rest/v1/pedidos", { method: "POST", headers: h, body: JSON.stringify(body) });
     if (!r.ok) throw new Error("falha");
     $("addDlg").close();
-    $("status").textContent = "Adicional enviado ao pedido #" + o.numero + ".";
+    $("status").textContent = "Adicional enviado ao pedido #" + nPed(o) + ".";
     $("status").classList.remove("bad");
     await load();
   } catch (e) {
@@ -900,7 +914,7 @@ function printProducao(o) {
   const t = $("ticket"); t.innerHTML = "";
   const line = (cls, txt) => t.appendChild(mk("div", cls, txt));
   const hr = () => t.appendChild(document.createElement("hr"));
-  line("c big", "PEDIDO #" + o.numero);
+  line("c big", "PEDIDO #" + nPed(o));
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
   line("c", new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
@@ -922,7 +936,7 @@ function printSetor(o, st) {
   const hr = () => t.appendChild(document.createElement("hr"));
   line("c big", SETORES[st].toUpperCase());
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
-  line("c", "Pedido #" + o.numero + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
   line("", "Cliente: " + o.cliente);
@@ -935,9 +949,32 @@ function printSetor(o, st) {
   window.print();
 }
 
-/* ============ SOM ============ */
+/* ============ SOM (já vem ligado; para desligar é só tocar no botão) ============ */
+let somLigado = true;
+const somChave = () => "jp_som_" + VIEW;
+function carregarSom() { try { somLigado = localStorage.getItem(somChave()) !== "0"; } catch (e) { somLigado = true; } paintSom(); }
+function paintSom() {
+  const trava = somLigado && audio && audio.state === "suspended";
+  $("soundBtn").setAttribute("aria-pressed", String(somLigado));
+  $("soundBtn").textContent = !somLigado ? "Som desativado" : (trava ? "Som ativado (toque na tela)" : "Som ativado");
+}
+/* Os navegadores só liberam áudio depois de um toque ou clique na página. O login já conta como toque;
+   se a tela voltar sozinha (login guardado), o primeiro toque em qualquer lugar libera o som. */
+function prepararAudio() {
+  if (!somLigado) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try {
+    if (!audio) { audio = new AC(); audio.onstatechange = paintSom; }
+    if (audio.state === "suspended") audio.resume().then(paintSom, () => {});
+  } catch (e) {}
+  paintSom();
+}
+["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { if (!audio || audio.state !== "running") prepararAudio(); }, { passive: true }));
 function beep() {
-  if (!audio) return;
+  if (!somLigado) return;
+  prepararAudio();
+  if (!audio || audio.state !== "running") return;
   try {
     [0, 0.25].forEach((d, i) => {
       const osc = audio.createOscillator(), g = audio.createGain();
@@ -948,17 +985,16 @@ function beep() {
   } catch (e) {}
 }
 $("soundBtn").onclick = () => {
-  const on = $("soundBtn").getAttribute("aria-pressed") === "true";
-  if (on) { audio = null; $("soundBtn").setAttribute("aria-pressed", "false"); $("soundBtn").textContent = "Ativar som"; return; }
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return;
-  audio = new AC(); beep();
-  $("soundBtn").setAttribute("aria-pressed", "true"); $("soundBtn").textContent = "Som ativado";
+  somLigado = !somLigado;
+  try { localStorage.setItem(somChave(), somLigado ? "1" : "0"); } catch (e) {}
+  if (somLigado) { prepararAudio(); setTimeout(beep, 150); }   /* toca um aviso para testar */
+  paintSom();
 };
 
 /* ============ INÍCIO ============ */
 function enter() {
   paintView();
+  carregarSom(); prepararAudio();
   $("login").hidden = true; $("app").hidden = false;
   load(); clearInterval(timer); timer = setInterval(load, 6000);
 }
