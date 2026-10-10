@@ -328,7 +328,7 @@ function store(key, val) {
   try { if (val === undefined) { const v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; }
 }
 /* O carrinho só é lembrado por algumas horas (o tempo de uma visita) e é apagado assim que o pedido é enviado. */
-const PRAZO_CARRINHO = 3 * 3600 * 1000, PRAZO_FORM = 6 * 3600 * 1000;
+const PRAZO_CARRINHO = 3 * 3600 * 1000, PRAZO_FORM = 3 * 3600 * 1000;
 function guardarCarrinho() { store("jp_cart", { t: Date.now(), cart: state.cart }); }
 const savedCart = store("jp_cart");
 if (savedCart && savedCart.cart && typeof savedCart.cart === "object" && Date.now() - (savedCart.t || 0) < PRAZO_CARRINHO) state.cart = savedCart.cart;
@@ -667,7 +667,11 @@ function finalizarEnvio(porWhatsapp) {
     : "<b>Pedido enviado!</b> Ele já chegou na cozinha. Em breve levamos até a sua mesa.";
   $("reopenWa").hidden = !porWhatsapp;
   if (porWhatsapp) $("reopenWa").href = state.lastHref;
-  state.enviado = true; state.fallback = false; state.cart = {}; guardarCarrinho(); $("fObs").value = "";
+  /* pedido concluído: limpa os dados do cliente. A mesa só continua se veio do QR Code. */
+  $("fNome").value = ""; $("fObs").value = ""; $("fPag").selectedIndex = 0;
+  if (!urlMesa) $("fMesa").value = "";
+  store("jp_form", null);
+  state.enviado = true; state.fallback = false; state.cart = {}; guardarCarrinho();
   $("formErr").textContent = "";
   $("orderForm").hidden = true; $("sent").hidden = false;
   renderAll();

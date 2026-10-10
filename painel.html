@@ -74,6 +74,14 @@ header.top > * { min-width: 0; }
 main { position: relative; z-index: 1; }
 .acts .btn.entregar { flex: 1 1 100%; min-height: 48px; font-size: 1.05rem; }
 .barra-status .desfazer { background: transparent; border: 0; color: var(--ouro); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 6px 10px; font-size: .95rem; }
+.busca-add { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.busca-add .campo { position: relative; flex: 1; }
+.busca-add svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+.busca-add input { width: 100%; padding: 11px 14px 11px 40px; border: 2px solid var(--line); border-radius: 999px; background: var(--bg); font-size: 1rem; }
+.busca-add input:focus { border-color: var(--ouro); outline: none; }
+.busca-add button { background: transparent; border: 0; color: var(--ouro); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 10px 6px; min-height: 44px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.add-info { color: var(--muted); font-size: .9rem; margin: 4px 0 2px; }
 .aj-item { margin: 12px 0; }
 .aj-item .btn { width: 100%; min-height: 50px; justify-content: center; font-size: 1rem; }
 .aj-nota { color: var(--muted); font-size: .88rem; margin: 4px 2px 0; }
@@ -102,6 +110,8 @@ main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, mi
 .campo-s { margin-bottom: 10px; }
 .campo-s label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 4px; }
 .campo-s input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
+#login label.manter { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 500; color: var(--muted); cursor: pointer; }
+#login .manter input { width: 22px; height: 22px; padding: 0; accent-color: var(--ouro); flex: none; }
 .pwd-dicas { color: var(--muted); font-size: .9rem; margin: 4px 0 10px; padding-left: 18px; }
 .pwd-linha { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .ok-msg { color: #7BE0A3; font-weight: 600; min-height: 1.3em; margin: 6px 0 0; }
@@ -186,6 +196,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <div><label for="senha">Senha</label>
       <div class="pwd"><input id="senha" type="password" autocomplete="current-password" required>
         <button class="ver" id="senhaVer" type="button" aria-pressed="false" aria-controls="senha">Mostrar</button></div></div>
+    <label class="manter"><input type="checkbox" id="manter"> Manter conectado neste computador</label>
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
@@ -274,6 +285,14 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <div class="dlg-head">
       <h2 id="addTitle">Adicionar itens</h2>
       <button class="btn ghost small" id="addClose" type="button">Fechar</button>
+    </div>
+    <div class="busca-add" role="search">
+      <label class="sr" for="addBusca">Buscar item para adicionar</label>
+      <div class="campo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="addBusca" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Buscar item: picanha, suco, caldo, meia...">
+      </div>
+      <button id="addBuscaLimpar" type="button" hidden>Limpar</button>
     </div>
     <div class="tabs" id="addTabs"></div>
     <div id="addMenu"></div>
@@ -414,10 +433,21 @@ function markPrinted(...ids) {
   ids.forEach(i => memImpressos.add(i));
   try { const s = lerImpressos(); ids.forEach(i => s.add(i)); localStorage.setItem(chaveImp(), JSON.stringify([...s].slice(-400))); } catch (e) {}
 }
-try { session = JSON.parse(localStorage.getItem("jp_sess") || "null"); } catch (e) {}
+/* O login fica guardado só na aba (acaba ao fechar), a menos que a pessoa marque "Manter conectado neste computador". */
+let manterConectado = false;
+function lerSessao() {
+  try { const l = localStorage.getItem("jp_sess"); if (l) { manterConectado = true; return JSON.parse(l); } } catch (e) {}
+  try { const t = sessionStorage.getItem("jp_sess"); if (t) { manterConectado = false; return JSON.parse(t); } } catch (e) {}
+  return null;
+}
+session = lerSessao();
 function saveSession(s) {
   session = s;
-  try { s ? localStorage.setItem("jp_sess", JSON.stringify(s)) : localStorage.removeItem("jp_sess"); } catch (e) {}
+  try {
+    if (!s) { localStorage.removeItem("jp_sess"); sessionStorage.removeItem("jp_sess"); return; }
+    const alvo = manterConectado ? localStorage : sessionStorage, outro = manterConectado ? sessionStorage : localStorage;
+    alvo.setItem("jp_sess", JSON.stringify(s)); outro.removeItem("jp_sess");
+  } catch (e) {}
 }
 
 /* ============ ACESSO (Supabase Auth via REST) ============ */
@@ -433,7 +463,9 @@ async function refreshSession() {
   try {
     const r = await fetch(CFG.url + "/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: authHeaders(), body: JSON.stringify({ refresh_token: session.refresh_token }) });
     if (!r.ok) return false;
-    saveSession(await r.json()); return true;
+    const nova = await r.json();
+    if (!session) return false;   /* a pessoa clicou em Sair no meio da renovação */
+    saveSession(nova); return true;
   } catch (e) { return false; }
 }
 async function api(path, opts = {}, retry = true) {
@@ -445,10 +477,18 @@ async function api(path, opts = {}, retry = true) {
   return r;
 }
 function logout() {
+  const era = session;
   saveSession(null); clearInterval(timer); seen = null; orders = [];
-  esconderSenhaLogin(); $("senha").value = "";
+  /* avisa o Supabase para encerrar este login também no servidor (assim ele não é renovado por outra aba) */
+  if (era && era.access_token && CFG.url) { try { fetch(CFG.url + "/auth/v1/logout", { method: "POST", keepalive: true, headers: { apikey: CFG.key, Authorization: "Bearer " + era.access_token } }).catch(() => {}); } catch (e) {} }
+  /* não deixa nada do usuário anterior na tela */
+  REL.node = null; REL.data = null; REL.k = "hoje"; NUMDIA.clear(); filter = "andamento";
+  esconderSenhaLogin(); $("senha").value = ""; $("email").value = ""; $("loginErr").textContent = "";
   $("app").hidden = true; $("login").hidden = false; VIEW = "todos"; document.title = "Administração — " + NOME_LOJA;
+  try { $("email").focus(); } catch (e) {}
 }
+/* se saiu em outra aba do mesmo navegador, sai aqui também */
+window.addEventListener("storage", (e) => { if (e.key === "jp_sess" && !e.newValue && session) logout(); });
 
 /* ============ PEDIDOS ============ */
 async function load() {
@@ -1007,15 +1047,17 @@ $("payClose").onclick = () => $("payDlg").close();
 /* ============ ADICIONAR ITENS A UM PEDIDO (feito pelo atendente) ============ */
 const allItems = {};
 MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
-const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {} };
+const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {}, q: "" };
 const keyOf = (id, o, e) => id + "|" + o + "|" + (e === null || e === undefined ? "" : e);
 const parseKey = (k) => { const [id, o, e] = k.split("|"); return { id, o: +o, e: e === "" || e === undefined ? null : +e }; };
 
 function openAdd(o) {
-  AD.o = o; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {};
+  AD.o = o; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
+  $("addBusca").value = ""; $("addBuscaLimpar").hidden = true;
   $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
   $("addTitle").textContent = "Adicionar itens — Pedido #" + nPed(o) + " · " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente;
   renderAdd(); $("addDlg").showModal();
+  setTimeout(() => { try { $("addBusca").focus(); } catch (e) {} }, 50);   /* já pronto para digitar a busca */
 }
 function addChange(key, d) {
   AD.cart[key] = Math.max(0, (AD.cart[key] || 0) + d);
@@ -1029,47 +1071,86 @@ function addLinhas() {
     return { qtd: q, nome: it.nome, detalhe: d.join(", "), subtotal: q * priceOf(it, o), partes: partesDe(it, o, e, q) };
   });
 }
+/* ---- busca de itens: ignora acentos e maiúsculas; todas as palavras digitadas precisam aparecer ---- */
+const semAcento = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const BUSCA_EXTRA = { jantinhas: "jantinha jantinhas prato refeicao", espetinhos: "espeto espetos espetinho espetinhos churrasco", porcoes: "porcao porcoes petisco", caldos: "caldo caldos sopa", bebidas: "bebida bebidas" };
+function resultadosBusca(q) {
+  const termos = semAcento(q).split(/\s+/).filter(Boolean), out = [];
+  MENU.forEach(c => {
+    const grupos = [];
+    c.secoes.forEach(sec => {
+      const itens = sec.itens.filter(it => !it.esgotado && termos.every(t => semAcento([it.nome, it.desc, c.nome, sec.titulo, BUSCA_EXTRA[c.id], (it.opcoes || []).map(o => o.nome).join(" ")].join(" ")).includes(t)));
+      if (itens.length) grupos.push({ titulo: sec.titulo, itens });
+    });
+    if (grupos.length) out.push({ cat: c, grupos });
+  });
+  return out;
+}
+const chaveAdd = (item) => keyOf(item.id, AD.sel[item.id] || 0, item.espeto ? (AD.esp[item.id] ?? 0) : null);
+function linhaAdd(item) {
+  const sel = AD.sel[item.id] || 0, esp = item.espeto ? (AD.esp[item.id] ?? 0) : null;
+  const key = chaveAdd(item);
+  const row = mk("div", "mi");
+  const info = mk("div", "", item.nome); info.appendChild(mk("small", "", brl.format(priceOf(item, sel))));
+  row.appendChild(info);
+  const st = mk("div", "stp");
+  const m = mk("button", "", "−"); m.type = "button"; m.setAttribute("aria-label", "Remover um " + item.nome); m.onclick = () => addChange(key, -1);
+  const p = mk("button", "", "+"); p.type = "button"; p.setAttribute("aria-label", "Adicionar um " + item.nome); p.onclick = () => addChange(key, 1);
+  st.append(m, mk("output", "", AD.cart[key] || 0), p); row.appendChild(st);
+  if (item.opcoes || item.espeto) {
+    const ctl = mk("div", "ctl");
+    if (item.opcoes) {
+      const se = document.createElement("select"); se.setAttribute("aria-label", "Tamanho de " + item.nome);
+      item.opcoes.forEach((op, i) => { const o = mk("option", "", op.nome + " · " + brl.format(op.preco)); o.value = i; if (i === sel) o.selected = true; se.appendChild(o); });
+      se.onchange = () => { AD.sel[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
+    }
+    if (item.espeto) {
+      const se = document.createElement("select"); se.setAttribute("aria-label", "Espeto de " + item.nome);
+      TRAD.forEach((n, i) => { const o = mk("option", "", "Espeto: " + n); o.value = i; if (i === esp) o.selected = true; se.appendChild(o); });
+      se.onchange = () => { AD.esp[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
+    }
+    row.appendChild(ctl);
+  }
+  return row;
+}
 function renderAdd() {
-  const tabs = $("addTabs"); tabs.innerHTML = "";
+  const busca = AD.q.trim();
+  const tabs = $("addTabs"); tabs.innerHTML = ""; tabs.hidden = !!busca;
   MENU.forEach(c => {
     const b = mk("button", "tab", c.nome); b.type = "button"; b.setAttribute("aria-pressed", String(c.id === AD.tab));
     b.onclick = () => { AD.tab = c.id; renderAdd(); };
     tabs.appendChild(b);
   });
   const box = $("addMenu"); box.innerHTML = "";
-  const cat = MENU.find(c => c.id === AD.tab);
-  cat.secoes.forEach(sec => {
-    box.appendChild(mk("div", "sec", sec.titulo));
-    sec.itens.forEach(item => {
-      if (item.esgotado) return;
-      const sel = AD.sel[item.id] || 0, esp = item.espeto ? (AD.esp[item.id] ?? 0) : null;
-      const key = keyOf(item.id, sel, esp);
-      const row = mk("div", "mi");
-      const info = mk("div", "", item.nome); info.appendChild(mk("small", "", brl.format(priceOf(item, sel))));
-      row.appendChild(info);
-      const st = mk("div", "stp");
-      const m = mk("button", "", "−"); m.type = "button"; m.setAttribute("aria-label", "Remover um " + item.nome); m.onclick = () => addChange(key, -1);
-      const p = mk("button", "", "+"); p.type = "button"; p.setAttribute("aria-label", "Adicionar um " + item.nome); p.onclick = () => addChange(key, 1);
-      st.append(m, mk("output", "", AD.cart[key] || 0), p); row.appendChild(st);
-      if (item.opcoes || item.espeto) {
-        const ctl = mk("div", "ctl");
-        if (item.opcoes) {
-          const se = document.createElement("select"); se.setAttribute("aria-label", "Tamanho de " + item.nome);
-          item.opcoes.forEach((op, i) => { const o = mk("option", "", op.nome + " · " + brl.format(op.preco)); o.value = i; if (i === sel) o.selected = true; se.appendChild(o); });
-          se.onchange = () => { AD.sel[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
-        }
-        if (item.espeto) {
-          const se = document.createElement("select"); se.setAttribute("aria-label", "Espeto de " + item.nome);
-          TRAD.forEach((n, i) => { const o = mk("option", "", "Espeto: " + n); o.value = i; if (i === esp) o.selected = true; se.appendChild(o); });
-          se.onchange = () => { AD.esp[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
-        }
-        row.appendChild(ctl);
-      }
-      box.appendChild(row);
+  if (busca) {
+    const res = resultadosBusca(busca);
+    const total = res.reduce((a, r) => a + r.grupos.reduce((b, g) => b + g.itens.length, 0), 0);
+    if (!total) box.appendChild(mk("p", "empty", "Nenhum item encontrado para “" + busca + "”. Tente outra palavra."));
+    else {
+      box.appendChild(mk("p", "add-info", total + (total > 1 ? " itens encontrados" : " item encontrado") + (total === 1 ? " — aperte Enter para adicionar 1" : "")));
+      res.forEach(r => r.grupos.forEach(g => {
+        box.appendChild(mk("div", "sec", r.cat.nome + (g.titulo !== r.cat.nome ? " · " + g.titulo : "")));
+        g.itens.forEach(item => box.appendChild(linhaAdd(item)));
+      }));
+    }
+  } else {
+    const cat = MENU.find(c => c.id === AD.tab);
+    cat.secoes.forEach(sec => {
+      box.appendChild(mk("div", "sec", sec.titulo));
+      sec.itens.forEach(item => { if (!item.esgotado) box.appendChild(linhaAdd(item)); });
     });
-  });
+  }
   $("addTotal").textContent = brl.format(addLinhas().reduce((a, l) => a + l.subtotal, 0));
 }
+$("addBusca").addEventListener("input", () => { AD.q = $("addBusca").value; $("addBuscaLimpar").hidden = !AD.q; renderAdd(); });
+$("addBuscaLimpar").onclick = () => { $("addBusca").value = ""; AD.q = ""; $("addBuscaLimpar").hidden = true; renderAdd(); $("addBusca").focus(); };
+$("addBusca").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  /* com um único resultado, Enter já adiciona 1 (busca rápida pelo teclado) */
+  const itens = resultadosBusca(AD.q.trim()).flatMap(r => r.grupos.flatMap(g => g.itens));
+  if (itens.length === 1) addChange(chaveAdd(itens[0]), 1);
+});
 async function sendAdd() {
   const L = addLinhas();
   if (!L.length) { $("addErr").textContent = "Escolha pelo menos um item."; return; }
@@ -1259,6 +1340,7 @@ $("pwdSug").onclick = () => {
 };
 
 /* ============ INÍCIO ============ */
+try { $("manter").checked = localStorage.getItem("jp_manter") === "1"; } catch (e) {}
 $("marcaAgua").style.backgroundImage = "url('" + $("logoTop").src + "')";
 (function () { const i = $("loginLogo"); if (i) i.src = $("logoTop").src; })();
 function enter() {
@@ -1273,6 +1355,8 @@ $("loginForm").addEventListener("submit", async (e) => {
   if (!CFG.url || !CFG.key) { $("loginErr").textContent = "Falta configurar a URL e a chave do Supabase no arquivo painel.html."; return; }
   try {
     const u = $("email").value.trim().toLowerCase().replace(/\s+/g, "");
+    manterConectado = $("manter").checked;
+    try { localStorage.setItem("jp_manter", manterConectado ? "1" : "0"); } catch (e2) {}
     await signIn(u.includes("@") ? u : u + "@" + DOMINIO_LOGIN, $("senha").value);
     $("senha").value = ""; esconderSenhaLogin(); enter();   /* não deixa a senha na tela */
   }
