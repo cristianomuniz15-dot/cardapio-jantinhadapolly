@@ -290,6 +290,16 @@ async function load() {
     const r = await api("/rest/v1/pedidos?select=*&criado_em=gte." + encodeURIComponent(desde) + "&order=criado_em.desc&limit=200");
     if (!r.ok) throw new Error("falha");
     orders = await r.json();
+    /* Adicional feito pelo atendente só com bebida: não passa por preparo, já nasce "entregue" */
+    if (VIEW === "todos") {
+      const auto = orders.filter(o => o.status === "novo" && isAdic(o) && soBebida(o));
+      if (auto.length) {
+        try {
+          const rr = await api("/rest/v1/pedidos?id=in.(" + auto.map(o => o.id).join(",") + ")", { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "entregue" }) });
+          if (rr.ok) auto.forEach(o => { o.status = "entregue"; });
+        } catch (e) { /* se falhar, o pedido continua com o botão Entregue */ }
+      }
+    }
     const ids = new Set(orders.map(o => o.id));
     const novos = seen ? orders.filter(o => !seen.has(o.id) && o.status === "novo") : [];
     const meus = novos.filter(doMeuSetor);
