@@ -99,6 +99,28 @@ main { position: relative; z-index: 1; }
   body.print-qr #qrPrint .qrgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm; }
   body.print-qr #qrPrint .qrcard { border: 1px solid #888; border-radius: 6px; }
 }
+.fab { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 6; min-height: 58px; padding: 0 26px; border: 0; border-radius: 999px; background: var(--verde); color: #fff; font-weight: 700; font-size: 1.15rem; box-shadow: 0 6px 18px rgba(0, 0, 0, .55); cursor: pointer; display: inline-flex; align-items: center; gap: 10px; }
+.fab svg { width: 24px; height: 24px; flex: none; }
+main { padding-bottom: 110px; }
+.novo-tipos { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
+.novo-sec { margin: 6px 0 4px; font-weight: 700; color: var(--ouro); font-size: .9rem; }
+#addDlg { height: min(92vh, 920px); }
+#addDlg[open] { display: flex; flex-direction: column; }
+#addDlg .dlg { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%; }
+.dlg-corpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr; grid-template-areas: "form" "itens" "foot"; align-content: start; gap: 6px; }
+#novoCampos { grid-area: form; }
+.dlg-itens { grid-area: itens; min-height: 0; display: flex; flex-direction: column; }
+.dlg-corpo .dlg-foot { grid-area: foot; position: sticky; bottom: 0; }
+#novoPay { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+#novoPay .btn { width: auto; min-height: 40px; padding: 0 12px; font-size: .92rem; }
+@media (min-width: 860px) {
+  #addDlg.novo { width: min(1020px, 96vw); }
+  #addDlg.novo .dlg-corpo { overflow: hidden; grid-template-columns: 350px 1fr; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "form itens" "foot itens"; column-gap: 20px; align-content: stretch; }
+  #addDlg.novo #novoCampos { overflow-y: auto; padding-right: 4px; }
+  #addDlg.novo .dlg-itens { min-height: 0; }
+  #addDlg.novo #addMenu { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+  #addDlg.novo .dlg-corpo .dlg-foot { position: static; }
+}
 .aj-item { margin: 12px 0; }
 .aj-item .btn { width: 100%; min-height: 50px; justify-content: center; font-size: 1rem; }
 .aj-nota { color: var(--muted); font-size: .88rem; margin: 4px 2px 0; }
@@ -217,7 +239,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 7</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 9</p>
   </form>
 </section>
 
@@ -245,6 +267,9 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
   <div class="barra-status" id="status" role="status"></div>
   <div class="marca-agua" id="marcaAgua" aria-hidden="true"></div>
   <main id="list" aria-live="polite"></main>
+  <button class="fab" id="novoBtn" type="button" hidden aria-label="Lançar um novo pedido (balcão, mesa ou viagem)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo pedido
+  </button>
 </div>
 
 <dialog id="ajDlg" aria-labelledby="ajTitle">
@@ -304,6 +329,18 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <h2 id="addTitle">Adicionar itens</h2>
       <button class="btn ghost small" id="addClose" type="button">Fechar</button>
     </div>
+    <div class="dlg-corpo">
+    <div id="novoCampos" hidden>
+      <div class="novo-sec">Tipo do pedido</div>
+      <div class="novo-tipos" id="novoTipos" role="group" aria-label="Tipo do pedido"></div>
+      <div class="qr-campos">
+        <div class="campo-s"><label for="novoNome">Nome do cliente</label><input id="novoNome" maxlength="40" autocomplete="off" placeholder="Para chamar quando ficar pronto"></div>
+        <div class="campo-s" id="novoMesaCampo" hidden><label for="novoMesa">Número da mesa</label><input id="novoMesa" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Ex.: 5"></div>
+      </div>
+      <div class="novo-sec">Pagamento</div>
+      <div class="pay-opts" id="novoPay"></div>
+          </div>
+    <div class="dlg-itens">
     <div class="busca-add" role="search">
       <label class="sr" for="addBusca">Buscar item para adicionar</label>
       <div class="campo">
@@ -314,11 +351,14 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     </div>
     <div class="tabs" id="addTabs"></div>
     <div id="addMenu"></div>
+    </div>
     <div class="dlg-foot">
       <input id="addObs" maxlength="240" placeholder="Observação (opcional)" aria-label="Observação do adicional">
-      <div class="tot"><span>Total do adicional</span><span id="addTotal">R$ 0,00</span></div>
+      <div class="tot"><span id="addTotLabel">Total do adicional</span><span id="addTotal">R$ 0,00</span></div>
+      <p class="hora" id="addTaxaTxt" hidden></p>
       <p class="err" id="addErr" role="alert"></p>
       <button class="btn green" id="addSend" type="button">Enviar adicional</button>
+    </div>
     </div>
   </div>
 </dialog>
@@ -418,6 +458,11 @@ function passaFiltro(o, f) {
   if (f === "entregue") return o.status === "entregue" && ehHoje(o);
   return ehHoje(o);   /* todos de hoje */
 }
+/* "Mesa" é só um texto: número = mesa; "Balcão" = cliente do balcão; vazio = retirada/viagem */
+const ehMesaNum = (m) => /^\d+$/.test(String(m == null ? "" : m));
+const localDe = (mesa) => !mesa ? "Retirada" : (ehMesaNum(mesa) ? "Mesa " + mesa : mesa);
+const TAXA_EMBALAGEM = 2;   /* taxa de embalagem do pedido para viagem, lançado pelo caixa */
+let silencioAte = 0;        /* depois que o caixa lança um pedido, não apita para o próprio pedido */
 const soBebida = (o) => { const p = partesOf(o); return p.length > 0 && p.every(x => x.setor === "bebidas"); };
 const partesDoSetor = (o, st) => partesOf(o).filter(p => p.setor === st);
 const doMeuSetor = (o) => VIEW === "todos" || partesDoSetor(o, VIEW).length > 0;
@@ -526,7 +571,7 @@ async function load() {
     orders.forEach(o => { o.numdia = NUMDIA.get(o.id) || o.numero; });
     /* Adicional feito pelo atendente só com bebida: não passa por preparo, já nasce "entregue" */
     if (VIEW === "todos") {
-      const auto = orders.filter(o => o.status === "novo" && isAdic(o) && soBebida(o));
+      const auto = orders.filter(o => o.status === "novo" && soBebida(o) && (isAdic(o) || o.mesa === "Balcão"));
       if (auto.length) {
         try {
           const rr = await api("/rest/v1/pedidos?id=in.(" + auto.map(o => o.id).join(",") + ")", { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "entregue" }) });
@@ -536,7 +581,7 @@ async function load() {
     }
     const ids = new Set(orders.map(o => o.id));
     const novos = seen ? orders.filter(o => !seen.has(o.id) && o.status === "novo") : [];
-    const meus = novos.filter(doMeuSetor);
+    const meus = (Date.now() < silencioAte && VIEW === "todos") ? [] : novos.filter(doMeuSetor);
     if (meus.length) { beep(); if (voice) meus.forEach(speak); }
     seen = ids;
     if (autoPrint) orders.filter(o => o.status === "novo" && doMeuSetor(o) && !jaImpresso(o.id)).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em)).forEach(queuePrint);
@@ -600,7 +645,7 @@ function card(o) {
   const head = mk("div", "card-head");
   head.append(mk("span", "num", "Pedido #" + nPed(o)), mk("span", "hora", horaDia(o)));
   c.appendChild(head);
-  const loc = mk("div", "local", (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente);
+  const loc = mk("div", "local", localDe(o.mesa) + " · " + o.cliente);
   c.appendChild(loc);
   const bd = mk("span", "badge " + o.status, STATUS[o.status] || o.status); c.appendChild(bd);
   if (isAdic(o)) c.appendChild(mk("span", "badge adic", "ADICIONAL"));
@@ -628,7 +673,7 @@ function card(o) {
     pg.style.marginBottom = "10px"; c.appendChild(pg);
     const g = (o.mesa && !o.pagamento) ? contaMesa(o) : { n: 0 };
     if (g.n > 1) {
-      const cm = mk("div", "hora", "Conta aberta da mesa " + o.mesa + " (" + g.n + " pedidos): " + brl.format(g.total));
+      const cm = mk("div", "hora", "Conta aberta — " + localDe(o.mesa) + " (" + g.n + " pedidos): " + brl.format(g.total));
       cm.style.cssText = "margin-bottom:10px;color:var(--ouro);font-weight:700"; c.appendChild(cm);
     }
   }
@@ -640,7 +685,7 @@ function card(o) {
     if (ATIVOS.includes(o.status)) add("Entregue", "green entregar", () => entregar(o));
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
     add("Imprimir pedido", "ghost", () => printProducao(o));
-    if (!o.mesa) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
+    if (!o.mesa || !ehMesaNum(o.mesa)) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
     if (ATIVOS.includes(o.status)) add("Cancelar", "ghost", () => { if (confirm("Cancelar o pedido #" + nPed(o) + "?")) setStatus(o, "cancelado"); });
   } else {
     add("Reimprimir", "ghost", () => printSetor(o, VIEW));
@@ -658,7 +703,7 @@ function printTicket(o) {
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
   line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
-  line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
+  line("b big", localDe(o.mesa).toUpperCase());
   line("", "Cliente: " + o.cliente);
   line("", "Pagamento: " + (o.pagamento || (o.mesa ? "na hora de fechar a conta" : "—")));
   hr();
@@ -690,7 +735,7 @@ function runQ() {
 function speak(o) {
   if (!("speechSynthesis" in window)) return;
   const itens = (VIEW === "todos" ? partesOf(o) : partesDoSetor(o, VIEW)).map(p => p.qtd + " " + p.txt + (p.nota ? ", " + p.nota : "")).join(". ");
-  const txt = (isAdic(o) ? "Pedido adicional " : "Novo pedido ") + nPed(o) + ". " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + ". " + itens + "." + (obsTxt(o) ? " Observação: " + obsTxt(o) : "");
+  const txt = (isAdic(o) ? "Pedido adicional " : "Novo pedido ") + nPed(o) + ". " + localDe(o.mesa) + ". " + itens + "." + (obsTxt(o) ? " Observação: " + obsTxt(o) : "");
   const u = new SpeechSynthesisUtterance(txt); u.lang = "pt-BR"; u.rate = 0.95;
   window.speechSynthesis.speak(u);
 }
@@ -1032,7 +1077,7 @@ function renderContas(list) {
 function contaCard(c) {
   const el = mk("article", "card conta");
   const head = mk("div", "card-head");
-  head.append(mk("span", "num", "Mesa " + c.mesa), mk("span", "hora", c.pedidos.length + (c.pedidos.length > 1 ? " pedidos" : " pedido")));
+  head.append(mk("span", "num", localDe(c.mesa)), mk("span", "hora", c.pedidos.length + (c.pedidos.length > 1 ? " pedidos" : " pedido")));
   el.appendChild(head);
   el.appendChild(mk("div", "local", c.cliente));
   c.pedidos.forEach(o => {
@@ -1055,7 +1100,7 @@ const FORMAS = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheiro", 
 const PAY = { c: null, forma: "" };
 function paintPay() {
   const c = PAY.c;
-  $("payTitle").textContent = "Fechar conta — Mesa " + c.mesa + " · " + c.cliente;
+  $("payTitle").textContent = "Fechar conta — " + localDe(c.mesa) + " · " + c.cliente;
   $("payTotal").textContent = brl.format(c.total);
   $("payWarn").hidden = !c.emAndamento;
   $("payWarn").textContent = c.emAndamento + (c.emAndamento > 1 ? " pedidos ainda não foram entregues." : " pedido ainda não foi entregue.");
@@ -1087,7 +1132,7 @@ async function fecharConta() {
     if (!r.ok) throw new Error("falha");
     atual.pedidos.forEach(o => { o.pagamento = forma; });
     $("payDlg").close();
-    avisar("Conta da mesa " + atual.mesa + " fechada (" + forma + ", " + brl.format(atual.total) + ").");
+    avisar("Conta fechada — " + localDe(atual.mesa) + " (" + forma + ", " + brl.format(atual.total) + ").");
     render(); await load();
   } catch (e) {
     $("payErr").textContent = "Não foi possível fechar a conta. Confira a conexão e tente de novo.";
@@ -1102,7 +1147,7 @@ function printConta(c) {
   line("c b", "CONFERÊNCIA DE CONTA");
   line("c", "Não é documento fiscal");
   hr();
-  line("b big", "MESA " + c.mesa);
+  line("b big", localDe(c.mesa).toUpperCase());
   line("", "Cliente: " + c.cliente);
   line("", new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
@@ -1128,17 +1173,42 @@ $("payClose").onclick = () => $("payDlg").close();
 /* ============ ADICIONAR ITENS A UM PEDIDO (feito pelo atendente) ============ */
 const allItems = {};
 MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
-const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {}, q: "" };
+const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {}, q: "", modo: "adicional", tipo: "balcao", pay: "" };
 const keyOf = (id, o, e) => id + "|" + o + "|" + (e === null || e === undefined ? "" : e);
 const parseKey = (k) => { const [id, o, e] = k.split("|"); return { id, o: +o, e: e === "" || e === undefined ? null : +e }; };
 
 function openAdd(o) {
-  AD.o = o; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
+  AD.o = o; AD.modo = "adicional"; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
+  $("addDlg").classList.remove("novo"); $("novoCampos").hidden = true; $("addTotLabel").textContent = "Total do adicional"; $("addSend").textContent = "Enviar adicional";
   $("addBusca").value = ""; $("addBuscaLimpar").hidden = true;
   $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
-  $("addTitle").textContent = "Adicionar itens — Pedido #" + nPed(o) + " · " + (o.mesa ? "Mesa " + o.mesa : "Retirada") + " · " + o.cliente;
+  $("addTitle").textContent = "Adicionar itens — Pedido #" + nPed(o) + " · " + localDe(o.mesa) + " · " + o.cliente;
   renderAdd(); $("addDlg").showModal();
   setTimeout(() => { try { $("addBusca").focus(); } catch (e) {} }, 50);   /* já pronto para digitar a busca */
+}
+/* ---- Novo pedido lançado pelo caixa (balcão, mesa ou viagem) ---- */
+const FORMAS_NOVO = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheiro", "Misto"];
+function openNovo() {
+  AD.o = null; AD.modo = "novo"; AD.tipo = "balcao"; AD.pay = ""; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
+  $("addBusca").value = ""; $("addBuscaLimpar").hidden = true; $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
+  $("novoNome").value = ""; $("novoMesa").value = "";
+  $("addDlg").classList.add("novo"); $("addTitle").textContent = "Novo pedido"; $("novoCampos").hidden = false; $("addTotLabel").textContent = "Total do pedido"; $("addSend").textContent = "Enviar pedido";
+  renderNovo(); renderAdd(); $("addDlg").showModal();
+  setTimeout(() => { try { $("novoNome").focus(); } catch (e) {} }, 50);
+}
+function renderNovo() {
+  const box = $("novoTipos"); box.innerHTML = "";
+  [["balcao", "Balcão (comer aqui)"], ["mesa", "Mesa"], ["viagem", "Viagem (levar)"]].forEach(([k, rot]) => {
+    const b = mk("button", "tab", rot); b.type = "button"; b.setAttribute("aria-pressed", String(AD.tipo === k));
+    b.onclick = () => { AD.tipo = k; if (k === "viagem" && AD.pay === "depois") AD.pay = ""; if (k === "mesa" && !AD.pay) AD.pay = "depois"; renderNovo(); renderAdd(); if (k === "mesa") $("novoMesa").focus(); };
+    box.appendChild(b);
+  });
+  $("novoMesaCampo").hidden = AD.tipo !== "mesa";
+  const pay = $("novoPay"); pay.innerHTML = "";
+  (AD.tipo === "viagem" ? [] : [["depois", "Pagar depois (conta aberta)"]]).concat(FORMAS_NOVO.map(f => [f, f])).forEach(([v, rot]) => {
+    const b = mk("button", "btn ghost", rot); b.type = "button"; b.setAttribute("aria-pressed", String(AD.pay === v));
+    b.onclick = () => { AD.pay = v; renderNovo(); }; pay.appendChild(b);
+  });
 }
 function addChange(key, d) {
   AD.cart[key] = Math.max(0, (AD.cart[key] || 0) + d);
@@ -1221,7 +1291,9 @@ function renderAdd() {
       sec.itens.forEach(item => { if (!item.esgotado) box.appendChild(linhaAdd(item)); });
     });
   }
-  $("addTotal").textContent = brl.format(addLinhas().reduce((a, l) => a + l.subtotal, 0));
+  const taxa = (AD.modo === "novo" && AD.tipo === "viagem") ? TAXA_EMBALAGEM : 0;
+  $("addTotal").textContent = brl.format(addLinhas().reduce((a, l) => a + l.subtotal, 0) + taxa);
+  $("addTaxaTxt").hidden = !taxa; $("addTaxaTxt").textContent = "Inclui a taxa de embalagem de " + brl.format(taxa) + ".";
 }
 $("addBusca").addEventListener("input", () => { AD.q = $("addBusca").value; $("addBuscaLimpar").hidden = !AD.q; renderAdd(); });
 $("addBuscaLimpar").onclick = () => { $("addBusca").value = ""; AD.q = ""; $("addBuscaLimpar").hidden = true; renderAdd(); $("addBusca").focus(); };
@@ -1232,8 +1304,35 @@ $("addBusca").addEventListener("keydown", (e) => {
   const itens = resultadosBusca(AD.q.trim()).flatMap(r => r.grupos.flatMap(g => g.itens));
   if (itens.length === 1) addChange(chaveAdd(itens[0]), 1);
 });
+async function sendNovo(L) {
+  const err = (t) => { $("addErr").textContent = t; };
+  const nome = $("novoNome").value.trim();
+  if (!nome) { err("Informe o nome do cliente, para chamar quando o pedido ficar pronto."); $("novoNome").focus(); return; }
+  let mesa = null;
+  if (AD.tipo === "balcao") mesa = "Balcão";
+  if (AD.tipo === "mesa") { mesa = $("novoMesa").value.trim(); if (!ehMesaNum(mesa)) { err("Informe o número da mesa."); $("novoMesa").focus(); return; } }
+  if (!L.length) { err("Escolha pelo menos um item."); return; }
+  if (!AD.pay) { err(AD.tipo === "viagem" ? "Escolha a forma de pagamento." : "Escolha como o cliente vai pagar, ou “Pagar depois”."); return; }
+  const taxa = AD.tipo === "viagem" ? TAXA_EMBALAGEM : 0, obs = $("addObs").value.trim();
+  const body = { cliente: nome, mesa, pagamento: AD.pay === "depois" ? null : AD.pay, observacoes: obs || null, itens: L, taxa, total: L.reduce((a, l) => a + l.subtotal, 0) + taxa };
+  const h = { apikey: CFG.key, "Content-Type": "application/json", Prefer: "return=minimal" };
+  if (CFG.key.startsWith("eyJ")) h.Authorization = "Bearer " + CFG.key;
+  $("addSend").disabled = true; err("");
+  try {
+    const r = await fetch(CFG.url + "/rest/v1/pedidos", { method: "POST", headers: h, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error("falha");
+    silencioAte = Date.now() + 8000;
+    $("addDlg").close();
+    avisar("Pedido de " + nome + " enviado" + (body.pagamento ? " (pago em " + body.pagamento + ")" : "") + ".");
+    await load();
+  } catch (e) {
+    err("Não foi possível enviar o pedido. Confira a conexão e tente de novo.");
+    $("addSend").disabled = false;
+  }
+}
 async function sendAdd() {
   const L = addLinhas();
+  if (AD.modo === "novo") return sendNovo(L);
   if (!L.length) { $("addErr").textContent = "Escolha pelo menos um item."; return; }
   const o = AD.o, obs = $("addObs").value.trim();
   const body = { cliente: o.cliente, mesa: o.mesa || null, pagamento: o.mesa ? null : (o.pagamento || null),
@@ -1265,7 +1364,7 @@ function printProducao(o) {
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
   line("c", new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
-  line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
+  line("b big", localDe(o.mesa).toUpperCase());
   line("", "Cliente: " + o.cliente);
   ["churrasqueira", "cozinha", "bebidas"].forEach(st => {
     const ps = partesDoSetor(o, st); if (!ps.length) return;
@@ -1285,7 +1384,7 @@ function printSetor(o, st) {
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
   line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
-  line("b big", o.mesa ? "MESA " + o.mesa : "RETIRADA");
+  line("b big", localDe(o.mesa).toUpperCase());
   line("", "Cliente: " + o.cliente);
   hr();
   partesDoSetor(o, st).forEach(p => {
@@ -1426,6 +1525,7 @@ $("marcaAgua").style.backgroundImage = "url('" + $("logoTop").src + "')";
 (function () { const i = $("loginLogo"); if (i) i.src = $("logoTop").src; })();
 function enter() {
   paintView();
+  $("novoBtn").hidden = VIEW !== "todos";   /* só o caixa lança pedidos */
   carregarSom(); prepararAudio();
   $("login").hidden = true; $("app").hidden = false;
   load(); clearInterval(timer); timer = setInterval(load, 6000);
@@ -1449,6 +1549,7 @@ $("refreshBtn").onclick = async () => {
   setTimeout(() => b.classList.remove("girando"), 900);
 };
 $("ajBtn").onclick = () => $("ajDlg").showModal();
+$("novoBtn").onclick = openNovo;
 $("ajFechar").onclick = () => $("ajDlg").close();
 $("ajDlg").addEventListener("click", (e) => { if (e.target === $("ajDlg")) $("ajDlg").close(); });
 $("logoutBtn").onclick = logout;
