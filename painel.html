@@ -300,7 +300,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 15</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 17</p>
     <p class="credito" style="color:var(--muted);margin:4px 0 0">Desenvolvido por Cristiano Muniz Pessoa</p>
   </form>
 </section>
@@ -709,8 +709,24 @@ function linkAviso(o) {
 async function marcarPronto(o) {
   const antes = o.status;
   if (await setStatus(o, "pronto")) {
-    avisar("Pedido #" + nPed(o) + " pronto para retirada. " + (telDe(o) ? "Toque em “Avisar no WhatsApp” para chamar o cliente." : "O cliente vê o aviso no celular, se estiver com a página aberta."), false, () => setStatus(o, antes));
+    avisar("Pedido #" + nPed(o) + (!o.mesa ? " pronto para retirada. " : " pronto. ") + (telDe(o) ? "Toque em “Avisar no WhatsApp” para chamar o cliente." : "O cliente vê o aviso no celular, se estiver com a página aberta."), false, () => setStatus(o, antes));
   }
+}
+/* O botão grande do cartão avança uma etapa por toque: Novo → Em preparo → Pronto → Entregue.
+   O cliente acompanha cada etapa no celular dele. */
+const PROX = { novo: "preparo", preparo: "pronto", pronto: "entregue" };
+function rotuloProx(o) {
+  const prox = PROX[o.status];
+  if (prox === "preparo") return "Em preparo";
+  if (prox === "pronto") return !o.mesa ? "Pronto para retirada" : (o.mesa === "Balcão" ? "Pronto no balcão" : "Pronto");
+  return "Entregue";
+}
+async function avancar(o) {
+  const prox = PROX[o.status]; if (!prox) return;
+  if (prox === "pronto") return marcarPronto(o);
+  if (prox === "entregue") return entregar(o);
+  const antes = o.status;
+  if (await setStatus(o, prox)) avisar("Pedido #" + nPed(o) + " em preparo. O cliente já vê no celular.", false, () => setStatus(o, antes));
 }
 async function entregar(o) {
   const antes = o.status;
@@ -791,13 +807,15 @@ function card(o) {
   const acts = mk("div", "acts");
   const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
   if (VIEW === "todos") {
-    /* um clique só: o pedido vai direto de "Novo" para "Entregue" */
     /* pediu pelo link sem mesa: a mesa é definida quando o cliente chegar */
     if (o.mesa === MESA_ADEFINIR && !o.pagamento && o.status !== "cancelado") add("Definir mesa", "gold entregar", () => abrirMesa(grupoDaMesa(o)));
-    /* retirada / viagem / balcão: um botão para avisar que o pedido está pronto */
-    if (!ehMesaNum(o.mesa) && (o.status === "novo" || o.status === "preparo")) add(!o.mesa ? "Pronto para retirada" : (o.mesa === "Balcão" ? "Pronto no balcão" : "Pronto"), "gold entregar", () => marcarPronto(o));
     if (o.status === "pronto" && telDe(o)) { const a = mk("a", "btn small gold", "Avisar no WhatsApp"); a.href = linkAviso(o); a.target = "_blank"; a.rel = "noopener"; acts.appendChild(a); }
-    if (ATIVOS.includes(o.status)) add("Entregue", "green entregar", () => entregar(o));
+    if (ATIVOS.includes(o.status)) {
+      if (soBebida(o)) add("Entregue", "green entregar", () => entregar(o));   /* só bebida: não passa por preparo */
+      else {
+        add(rotuloProx(o), (o.status === "pronto" ? "green" : "gold") + " entregar", () => avancar(o));
+      }
+    }
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
     add("Imprimir pedido", "ghost", () => imprimirPedido(o));
     /* acabou o papel de um dos cupons? reimprime só aquele setor */

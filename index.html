@@ -58,6 +58,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .band a:hover { text-decoration: underline; }
 .mesa-chip { display: inline-block; background: var(--brasa); color: #fff; padding: 2px 12px; border-radius: 999px; font-weight: 700; }
 .closed { background: var(--brasa); color: #fff; text-align: center; padding: 8px 16px; font-weight: 600; }
+.closed.info { background: var(--ouro); color: var(--on-ouro); }
+.ctrl.muted { color: var(--muted); font-weight: 700; }
 .closed[hidden], .mesa-row[hidden] { display: none; }
 .mesa-row { background: var(--surface); border-bottom: 1px solid var(--line); text-align: center; padding: 8px 16px; font-weight: 600; }
 
@@ -206,12 +208,12 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 </header>
 <div class="band noprint">
   <div class="band-in">
-    <span class="hours">Das 18h às 23h</span>
+    <span class="hours">Seg a sex · 18h às 23h</span>
     <a id="waLink" href="#" target="_blank" rel="noopener">62 98264-2532</a>
     <a href="https://instagram.com/jantinhadapolly" target="_blank" rel="noopener">@jantinhadapolly</a>
   </div>
 </div>
-<div class="closed noprint" id="closed" hidden>Estamos fechados agora. Atendemos das 18h às 23h, mas você já pode montar o pedido.</div>
+<div class="closed noprint" id="closed" role="status" hidden></div>
 <div class="mesa-row noprint" id="mesaRow" hidden><span class="mesa-chip" id="mesaChip"></span></div>
 
 <div class="tabs-wrap noprint">
@@ -230,7 +232,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 
 <div class="foot noprint">
   <p class="credito">Desenvolvido por Cristiano Muniz Pessoa</p>
-  <p class="versao" id="versao">Versão 12/10/2026 · 15</p>
+  <p class="versao" id="versao">Versão 12/10/2026 · 17</p>
 </div>
 
 <div class="cartbar noprint" id="cartbar" hidden>
@@ -302,7 +304,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
     <div class="sent" id="sent" hidden>
       <p id="sentTexto"><b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente.</p>
       <div class="acomp" id="acomp" hidden>
-        <div class="acomp-passos" id="acompPassos"><span>Recebido</span><span>Em preparo</span><span>Pronto</span></div>
+        <div class="acomp-passos" id="acompPassos"><span>Recebido</span><span>Em preparo</span><span>Pronto</span><span>Entregue</span></div>
         <p class="acomp-txt" id="acompTxt"></p>
       </div>
       <p>Se quiser acrescentar mais alguma coisa depois, é só chamar o atendente.</p>
@@ -323,7 +325,9 @@ const CONFIG = {
   supabaseUrl: "https://sjxyjaqkkltinsdvzbsj.supabase.co",   /* ex.: https://abcdxyz.supabase.co */
   supabaseKey: "sb_publishable__tL-Y3NCDQFZ3gIVTO47uA_zaj0FFLQ",   /* chave anon public ou publishable */
   taxaEmbalagem: 2,      /* cobrada uma vez por pedido de retirada (sem mesa) */
-  abre: 18, fecha: 23    /* horário de atendimento */
+  abre: 18, fecha: 23,           /* atendimento: das 18h às 23h */
+  pedidosAPartir: "18:00",       /* pedidos pelo cardápio (link e QR Code): abrem junto com o atendimento */
+  dias: [1, 2, 3, 4, 5]          /* segunda a sexta (0 = domingo ... 6 = sábado) */
 };
 
 /* O cardápio (itens e preços) fica em cardapio-dados.js */
@@ -391,6 +395,60 @@ function mesaFromUrl() {
   } catch (e) { return ""; }
 }
 const urlMesa = mesaFromUrl();
+
+/* ============ HORÁRIO DOS PEDIDOS PELO LINK / QR CODE ============ */
+/* Segunda a sexta, das 18h às 23h (horário de Brasília, não importa o relógio do celular).
+   Fora disso o cardápio só mostra os itens. A Administração lança pedidos a qualquer hora, pelo painel.
+   Para o dono testar fora do horário: acrescente ?teste=1 ao endereço. */
+const MODO_TESTE = /(^|[?&#])teste=1(&|$)/.test(location.search + location.hash);
+function agoraBrasilia() {
+  try {
+    const parts = {};
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date()).forEach(p => { parts[p.type] = p.value; });
+    const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday);
+    if (dow < 0) throw new Error("dia");
+    return { dow, min: (+parts.hour % 24) * 60 + (+parts.minute) };
+  } catch (e) { const d = new Date(); return { dow: d.getDay(), min: d.getHours() * 60 + d.getMinutes() }; }
+}
+const hhmmParaMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+function estadoLoja(a) {
+  a = a || agoraBrasilia();
+  if (!CONFIG.dias.includes(a.dow)) return { aberto: false, motivo: "dia", a };
+  if (a.min < hhmmParaMin(CONFIG.pedidosAPartir)) return { aberto: false, motivo: "cedo", a };
+  if (a.min >= CONFIG.fecha * 60) return { aberto: false, motivo: "tarde", a };
+  return { aberto: true, antes: a.min < CONFIG.abre * 60, a };
+}
+const lojaAberta = () => MODO_TESTE || estadoLoja().aberto;
+function quandoVoltamos(a) {
+  const nomes = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  for (let i = 1; i <= 7; i++) { const d = (a.dow + i) % 7; if (CONFIG.dias.includes(d)) return i === 1 ? "amanhã" : "na " + nomes[d]; }
+  return "em breve";
+}
+const HORARIO_TXT = "Atendemos de segunda a sexta, das " + CONFIG.abre + "h às " + CONFIG.fecha + "h.";
+const fmtHora = (t) => { const [h, m] = t.split(":"); return h.replace(/^0/, "") + "h" + (+m ? m : ""); };
+function textoLoja(e) {
+  const hp = fmtHora(CONFIG.pedidosAPartir);
+  const igual = hhmmParaMin(CONFIG.pedidosAPartir) === CONFIG.abre * 60;   /* pedidos abrem junto com o atendimento */
+  const volta = igual ? "a partir das " + hp : "com pedidos a partir das " + hp;
+  if (e.aberto) return e.antes ? "Já estamos recebendo pedidos! O atendimento começa às " + CONFIG.abre + "h." : "";
+  if (e.motivo === "dia") return "Hoje não abrimos. " + HORARIO_TXT + " Voltamos " + quandoVoltamos(e.a) + ", " + volta + ".";
+  if (e.motivo === "cedo") return igual ? "Ainda não estamos recebendo pedidos. " + HORARIO_TXT : "Os pedidos pelo cardápio abrem às " + hp + ". " + HORARIO_TXT;
+  return "Encerramos os pedidos por hoje (atendemos até às " + CONFIG.fecha + "h). Voltamos " + quandoVoltamos(e.a) + ", " + volta + ".";
+}
+let lojaAbertaAntes = null;
+function atualizarLoja() {
+  const e = estadoLoja(), el = $("closed");
+  const txt = MODO_TESTE ? "Modo de teste: pedidos liberados fora do horário." : textoLoja(e);
+  el.textContent = txt; el.hidden = !txt;
+  el.classList.toggle("info", MODO_TESTE || e.aberto);
+  const aberta = lojaAberta();
+  if (lojaAbertaAntes !== null && aberta !== lojaAbertaAntes) {
+    if (!aberta && $("sheet").open) $("formErr").textContent = "Os pedidos pelo cardápio foram encerrados. " + textoLoja(e);
+    renderAll();
+  }
+  lojaAbertaAntes = aberta;
+}
 const MESA_ADEFINIR = "A definir";   /* pediu pelo link, vai comer aqui e ainda não escolheu a mesa */
 
 /* ============ COMER NO LOCAL x RETIRADA ============ */
@@ -495,6 +553,7 @@ function renderItem(item) {
 
   const ctrl = document.createElement("div"); ctrl.className = "ctrl";
   if (item.esgotado) ctrl.textContent = "Esgotado";
+  else if (!lojaAberta()) { ctrl.textContent = "Fechado"; ctrl.className = "ctrl muted"; }
   else if (item.espeto) {
     const b = document.createElement("button"); b.type = "button"; b.className = "btn add";
     b.textContent = linhasItem.length ? "Adicionar outra" : "Adicionar"; b.setAttribute("aria-label", "Adicionar " + item.nome);
@@ -517,7 +576,7 @@ function renderItem(item) {
     });
     li.appendChild(o);
   }
-  if (item.espeto) {
+  if (item.espeto && lojaAberta()) {   /* fechado: não mostra a escolha do espeto */
     const w = document.createElement("div"); w.className = "pick";
     const lab = document.createElement("label"); lab.htmlFor = "esp-" + item.id; lab.textContent = "Escolha o espeto";
     const s = document.createElement("select"); s.id = "esp-" + item.id;
@@ -525,7 +584,7 @@ function renderItem(item) {
     s.onchange = () => { state.esp[item.id] = +s.value; renderAll(); const again = $("esp-" + item.id); if (again) again.focus(); };
     w.append(lab, s); li.appendChild(w);
   }
-  if (item.espeto && linhasItem.length) {
+  if (item.espeto && linhasItem.length && lojaAberta()) {
     const box = document.createElement("div"); box.className = "unids";
     const t = document.createElement("div"); t.className = "t"; t.textContent = "No seu pedido:"; box.appendChild(t);
     linhasItem.forEach(([k, q]) => {
@@ -554,7 +613,7 @@ function stepper(key, qty, nome) {
 /* ============ RENDER: PEDIDO ============ */
 function renderBar() {
   const { n, sub } = totals();
-  $("cartbar").hidden = n === 0;
+  $("cartbar").hidden = n === 0 || !lojaAberta();
   $("barCount").textContent = n;
   $("barTotal").textContent = brl.format(sub);
 }
@@ -684,6 +743,10 @@ function updateSendLink() {
 }
 
 function validate() {
+  if (!lojaAberta()) {
+    $("formErr").textContent = "Os pedidos pelo cardápio estão encerrados agora. " + textoLoja(estadoLoja());
+    return false;
+  }
   if (!$("fNome").value.trim()) {
     $("formErr").textContent = "Informe seu nome para que possamos chamar você.";
     $("fNome").focus(); return false;
@@ -817,7 +880,7 @@ function textoAcomp() {
   switch (ACOMP.status) {
     case "preparo": return { txt: "Pedido" + n + " em preparo.", passo: 2 };
     case "pronto": return { txt: ACOMP.retirada ? "Pedido" + n + " pronto! Pode vir retirar." : "Pedido" + n + " pronto!", cls: "pronto", passo: 3 };
-    case "entregue": return { txt: "Pedido" + n + " entregue. Bom apetite!", passo: 3 };
+    case "entregue": return { txt: "Pedido" + n + " entregue. Bom apetite!", passo: 4 };
     case "cancelado": return { txt: "Pedido" + n + " cancelado. Fale com o atendente.", cls: "cancelado", passo: 0 };
     default: return { txt: "Pedido" + n + " recebido. Já estamos iniciando o preparo.", passo: 1 };
   }
@@ -901,10 +964,9 @@ aplicarForm();
 window.addEventListener("pageshow", () => { aplicarForm(); renderAll(); });
 window.addEventListener("load", () => setTimeout(aplicarForm, 0));
 if (urlMesa) { $("mesaChip").textContent = "Você está na mesa " + urlMesa; $("mesaRow").hidden = false; }
-(function horario() {
-  const h = new Date().getHours();
-  $("closed").hidden = h >= CONFIG.abre && h < CONFIG.fecha;
-})();
+atualizarLoja();
+setInterval(atualizarLoja, 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizarLoja(); });
 renderAll();
 </script>
 </body>
