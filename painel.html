@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@1,700&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #0E0B0A; --surface: #1A1513; --ink: #F6F1EA; --muted: #B3A89E; --line: #2E2623;
@@ -121,6 +121,66 @@ main { padding-bottom: 110px; }
   #addDlg.novo #addMenu { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
   #addDlg.novo .dlg-corpo .dlg-foot { position: static; }
 }
+.unids { grid-column: 1 / -1; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.unids .t { font-weight: 700; font-size: .85rem; color: var(--muted); margin-bottom: 2px; }
+.unid { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 0; }
+.unid span { font-weight: 600; }
+.passos { display: none; gap: 8px; margin: 6px 0; }
+.passos .tab { flex: 1; text-align: center; padding: 9px 8px; font-size: .95rem; }
+#addNext { display: none; justify-content: center; align-items: center; }
+.dlg-topo { background: var(--surface); }
+/* CELULAR: a janela ocupa a tela toda, como um aplicativo. Busca e categorias ficam fixas no topo, só a lista rola,
+   e o total com o botão ficam fixos embaixo. No "Novo pedido" são 2 passos: 1 · Itens e 2 · Cliente e pagamento. */
+@media (max-width: 859px) {
+  #addDlg { width: 100vw; max-width: 100vw; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; overflow: hidden; }
+  #addDlg .dlg { padding: 12px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  #addDlg .dlg-corpo { display: flex; flex-direction: column; overflow: hidden; gap: 8px; align-content: normal; }
+  #addDlg #novoCampos { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+  #addDlg .dlg-itens { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  #addDlg .dlg-topo { flex: none; }
+  #addDlg #addMenu { flex: 1 1 auto; overflow-y: auto; min-height: 0; -webkit-overflow-scrolling: touch; }
+  #addDlg .dlg-corpo .dlg-foot { position: static; flex: none; margin-top: 0; }
+  #addDlg .dlg-head h2 { font-size: 1.05rem; }
+  #addDlg .busca-add { margin: 2px 0 4px; }
+  #addDlg .dlg .tabs .tab { padding: 7px 14px; font-size: .95rem; }
+  #addDlg.novo .passos { display: flex; }
+  #addDlg.novo.passo1 #novoCampos { display: none; }
+  #addDlg.novo.passo2 .dlg-itens { display: none; }
+  #addDlg.novo.passo1 #addObs { display: none; }
+  #addDlg.novo.passo1 #addSend { display: none; }
+  #addDlg.novo.passo1 #addNext { display: inline-flex; justify-content: center; align-items: center; }
+}
+/* telas baixas (celular deitado): tudo mais compacto para sobrar espaço para a lista */
+@media (max-height: 520px) {
+  #addDlg .dlg { padding: 6px 10px; }
+  #addDlg .dlg-head { margin-bottom: 0; }
+  #addDlg .dlg-head h2 { font-size: .95rem; }
+  #addDlg .dlg-head .btn { min-height: 32px; padding: 3px 10px; }
+  #addDlg .passos { margin: 2px 0; }
+  #addDlg .passos .tab { padding: 4px 8px; font-size: .88rem; }
+  #addDlg .busca-add { margin: 2px 0; }
+  #addDlg .busca-add input { padding: 6px 12px 6px 36px; font-size: .95rem; }
+  #addDlg .busca-add button { min-height: 32px; padding: 4px 6px; }
+  #addDlg .dlg .tabs { margin: 2px 0; padding-bottom: 2px; }
+  #addDlg .dlg .tabs .tab { padding: 4px 12px; font-size: .88rem; }
+  #addDlg .dlg-foot { grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; padding-top: 6px; margin-top: 4px; }
+  #addDlg .dlg-foot .tot { grid-column: 1; margin: 0; font-size: 1.05rem; }
+  #addDlg .dlg-foot #addSend, #addDlg .dlg-foot #addNext { grid-column: 2; min-height: 40px; padding: 4px 18px; }
+  #addDlg .dlg-foot #addObs, #addDlg .dlg-foot .err, #addDlg .dlg-foot .hora { grid-column: 1 / -1; }
+  #addDlg .dlg-foot #addObs { padding: 6px 10px; }
+  #addDlg .dlg-foot .err { margin: 0; min-height: 0; font-size: .85rem; }
+}
+.credito { font-family: "Dancing Script", "Segoe Script", "Brush Script MT", cursive; font-size: 1.05rem; line-height: 1.2; }
+.btn[disabled], .btn.bloqueado { opacity: .45; cursor: not-allowed; }
+/* faixa que pisca quando chega pedido novo (devagar: 1 piscada a cada 1,3 s) */
+.alerta-novo { position: fixed; top: 0; left: 0; right: 0; z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; font-weight: 800; font-size: 1.2rem; color: #fff; background: var(--brasa); cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, .6); animation: piscar 1.3s steps(1, end) infinite; }
+.alerta-novo .alerta-det { display: block; font-weight: 600; font-size: .95rem; }
+@keyframes piscar { 0%, 49.99% { background: var(--brasa); color: #fff; } 50%, 100% { background: var(--ouro); color: #1E1500; } }
+@media (prefers-reduced-motion: reduce) { .alerta-novo { animation: none; } }
+.reimp { flex: 1 1 100%; display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; }
+.reimp span { color: var(--muted); font-weight: 600; font-size: .72rem; white-space: nowrap; }
+.card .reimp .btn.small { padding: 3px 7px; min-height: 30px; font-size: .74rem; white-space: nowrap; }
+.ped-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .aj-item { margin: 12px 0; }
 .aj-item .btn { width: 100%; min-height: 50px; justify-content: center; font-size: 1rem; }
 .aj-nota { color: var(--muted); font-size: .88rem; margin: 4px 2px 0; }
@@ -199,7 +259,8 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 .dlg { padding: 16px; }
 .dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 .dlg-head h2 { margin: 0; font-size: 1.15rem; font-weight: 700; }
-.dlg .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
+.dlg .tabs { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; margin: 6px 0 4px; padding-bottom: 4px; scrollbar-width: thin; }
+.dlg .tabs .tab { flex: none; }
 .sec { font-weight: 700; margin: 12px 0 2px; color: var(--ouro); }
 .mi { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: center; }
 .mi small { color: var(--muted); display: block; }
@@ -239,7 +300,8 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 9</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 14</p>
+    <p class="credito" style="color:var(--muted);margin:4px 0 0">Desenvolvido por Cristiano Muniz Pessoa</p>
   </form>
 </section>
 
@@ -266,6 +328,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
   <div class="aviso-som" id="avisoSom" hidden>Toque em qualquer lugar da tela para liberar o som dos avisos.</div>
   <div class="barra-status" id="status" role="status"></div>
   <div class="marca-agua" id="marcaAgua" aria-hidden="true"></div>
+  <div class="alerta-novo" id="alertaNovo" role="alert" aria-live="assertive" hidden>
+    <div><span id="alertaTitulo">NOVO PEDIDO</span><span class="alerta-det" id="alertaDet"></span></div>
+    <button type="button" class="btn small ghost" id="alertaOk" style="background:#fff;color:#111;border-color:#fff">Ciente</button>
+  </div>
   <main id="list" aria-live="polite"></main>
   <button class="fab" id="novoBtn" type="button" hidden aria-label="Lançar um novo pedido (balcão, mesa ou viagem)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo pedido
@@ -279,6 +345,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <button class="btn ghost small" id="ajFechar" type="button">Fechar</button>
     </div>
     <div class="aj-item"><button class="btn ghost" id="soundBtn" type="button" aria-pressed="true">Som ativado</button><p class="aj-nota">Toca um aviso quando chega pedido novo.</p></div>
+    <div class="aj-item"><button class="btn ghost" id="alertaBtn" type="button" aria-pressed="true">Alerta piscando: ligado</button><p class="aj-nota">Faixa vermelha e amarela piscando no alto da tela quando chega pedido novo, até você tocar em “Ciente”.</p></div>
     <div class="aj-item"><button class="btn ghost" id="voiceBtn" type="button" aria-pressed="false">Ler pedidos em voz alta</button><p class="aj-nota">Fala o pedido em voz alta quando ele chega.</p></div>
     <div class="aj-item"><button class="btn ghost" id="autoBtn" type="button" aria-pressed="false">Impressão automática: desligada</button><p class="aj-nota" id="autoNota"></p></div>
   </div>
@@ -329,6 +396,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <h2 id="addTitle">Adicionar itens</h2>
       <button class="btn ghost small" id="addClose" type="button">Fechar</button>
     </div>
+    <div class="passos" id="novoPassos">
+      <button type="button" id="passo1Btn" class="tab" aria-pressed="true">1 · Itens</button>
+      <button type="button" id="passo2Btn" class="tab" aria-pressed="false">2 · Cliente e pagamento</button>
+    </div>
     <div class="dlg-corpo">
     <div id="novoCampos" hidden>
       <div class="novo-sec">Tipo do pedido</div>
@@ -336,11 +407,13 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <div class="qr-campos">
         <div class="campo-s"><label for="novoNome">Nome do cliente</label><input id="novoNome" maxlength="40" autocomplete="off" placeholder="Para chamar quando ficar pronto"></div>
         <div class="campo-s" id="novoMesaCampo" hidden><label for="novoMesa">Número da mesa</label><input id="novoMesa" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Ex.: 5"></div>
+        <div class="campo-s" id="novoTelCampo" hidden><label for="novoTel">WhatsApp do cliente (opcional)</label><input id="novoTel" type="tel" inputmode="tel" maxlength="20" autocomplete="off" placeholder="(62) 9 9999-9999"></div>
       </div>
       <div class="novo-sec">Pagamento</div>
       <div class="pay-opts" id="novoPay"></div>
           </div>
     <div class="dlg-itens">
+    <div class="dlg-topo">
     <div class="busca-add" role="search">
       <label class="sr" for="addBusca">Buscar item para adicionar</label>
       <div class="campo">
@@ -350,6 +423,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <button id="addBuscaLimpar" type="button" hidden>Limpar</button>
     </div>
     <div class="tabs" id="addTabs"></div>
+    </div>
     <div id="addMenu"></div>
     </div>
     <div class="dlg-foot">
@@ -357,6 +431,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <div class="tot"><span id="addTotLabel">Total do adicional</span><span id="addTotal">R$ 0,00</span></div>
       <p class="hora" id="addTaxaTxt" hidden></p>
       <p class="err" id="addErr" role="alert"></p>
+      <button class="btn gold" id="addNext" type="button">Continuar</button>
       <button class="btn green" id="addSend" type="button">Enviar adicional</button>
     </div>
     </div>
@@ -412,7 +487,13 @@ function partesOf(o) {
   return out;
 }
 const isAdic = (o) => /^ADICIONAL/i.test(o.observacoes || "");
-const obsTxt = (o) => (o.observacoes || "").replace(/^ADICIONAL\s*(—\s*)?/i, "").trim();
+/* o WhatsApp do cliente (retirada/viagem) viaja dentro das observações, como [tel:5562999999999] */
+const TEL_RE = /\s*\[tel:(\d{10,15})\]\s*/i;
+const telDe = (o) => { const m = (o.observacoes || "").match(TEL_RE); return m ? m[1] : ""; };
+const obsTxt = (o) => (o.observacoes || "").replace(TEL_RE, " ").replace(/^\s*ADICIONAL\s*(—\s*)?/i, "").trim();
+const normTel = (s) => { const d = String(s || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) return "55" + d; if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d; return ""; };
+const fmtTel = (t) => { const d = String(t).replace(/^55/, ""); return d.length === 11 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7) : d.length === 10 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6) : t; };
+const msgBloqueio = (n) => "A conta só poderá ser fechada mediante a entrega " + (n > 1 ? "dos pedidos." : "do pedido.");
 function contaMesa(o) {
   const k = (x) => (x.cliente || "").trim().toLowerCase();
   const g = orders.filter(x => x.mesa && x.mesa === o.mesa && k(x) === k(o) && !x.pagamento && x.status !== "cancelado");
@@ -430,7 +511,8 @@ function contasAbertas() {
   return [...m.values()].map(c => {
     c.pedidos.sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
     c.total = c.pedidos.reduce((a, o) => a + Number(o.total), 0);
-    c.emAndamento = c.pedidos.filter(o => ATIVOS.includes(o.status) && !soBebida(o)).length;
+    c.pendentes = c.pedidos.filter(o => ATIVOS.includes(o.status)).length;   /* pedidos ainda não entregues */
+    c.emAndamento = c.pendentes;
     return c;
   }).sort((a, b) => new Date(a.pedidos[0].criado_em) - new Date(b.pedidos[0].criado_em));
 }
@@ -541,6 +623,7 @@ async function api(path, opts = {}, retry = true) {
   return r;
 }
 function logout() {
+  pararAlerta();
   const era = session;
   saveSession(null); clearInterval(timer); seen = null; orders = [];
   /* avisa o Supabase para encerrar este login também no servidor (assim ele não é renovado por outra aba) */
@@ -582,7 +665,7 @@ async function load() {
     const ids = new Set(orders.map(o => o.id));
     const novos = seen ? orders.filter(o => !seen.has(o.id) && o.status === "novo") : [];
     const meus = (Date.now() < silencioAte && VIEW === "todos") ? [] : novos.filter(doMeuSetor);
-    if (meus.length) { beep(); if (voice) meus.forEach(speak); }
+    if (meus.length) { beep(); if (voice) meus.forEach(speak); alertarNovos(meus); }
     seen = ids;
     if (autoPrint) orders.filter(o => o.status === "novo" && doMeuSetor(o) && !jaImpresso(o.id)).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em)).forEach(queuePrint);
     $("horaAtu").textContent = "Atualizado às " + hora(new Date());
@@ -601,6 +684,18 @@ async function setStatus(o, st) {
   } catch (e) {
     avisar("Não foi possível atualizar o pedido. Tente de novo.", true);
     return false;
+  }
+}
+function linkAviso(o) {
+  const tel = telDe(o); if (!tel) return "";
+  const nome = (o.cliente || "").trim().split(/\s+/)[0];
+  const txt = "Olá" + (nome ? ", " + nome : "") + "! Seu pedido #" + nPed(o) + " na " + NOME_LOJA + " está pronto e disponível para retirada. Pode vir buscar! 😊";
+  return "https://wa.me/" + tel + "?text=" + encodeURIComponent(txt);
+}
+async function marcarPronto(o) {
+  const antes = o.status;
+  if (await setStatus(o, "pronto")) {
+    avisar("Pedido #" + nPed(o) + " pronto para retirada. " + (telDe(o) ? "Toque em “Avisar no WhatsApp” para chamar o cliente." : "O cliente vê o aviso no celular, se estiver com a página aberta."), false, () => setStatus(o, antes));
   }
 }
 async function entregar(o) {
@@ -647,6 +742,7 @@ function card(o) {
   c.appendChild(head);
   const loc = mk("div", "local", localDe(o.mesa) + " · " + o.cliente);
   c.appendChild(loc);
+  if (VIEW === "todos" && telDe(o)) c.appendChild(mk("div", "hora", "WhatsApp: " + fmtTel(telDe(o))));
   const bd = mk("span", "badge " + o.status, STATUS[o.status] || o.status); c.appendChild(bd);
   if (isAdic(o)) c.appendChild(mk("span", "badge adic", "ADICIONAL"));
   if (VIEW === "todos" && soBebida(o)) c.appendChild(mk("span", "badge beb", "SÓ BEBIDA"));
@@ -682,9 +778,21 @@ function card(o) {
   const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
   if (VIEW === "todos") {
     /* um clique só: o pedido vai direto de "Novo" para "Entregue" */
+    /* retirada / viagem / balcão: um botão para avisar que o pedido está pronto */
+    if (!ehMesaNum(o.mesa) && (o.status === "novo" || o.status === "preparo")) add(o.mesa === "Balcão" ? "Pronto no balcão" : "Pronto para retirada", "gold entregar", () => marcarPronto(o));
+    if (o.status === "pronto" && telDe(o)) { const a = mk("a", "btn small gold", "Avisar no WhatsApp"); a.href = linkAviso(o); a.target = "_blank"; a.rel = "noopener"; acts.appendChild(a); }
     if (ATIVOS.includes(o.status)) add("Entregue", "green entregar", () => entregar(o));
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
-    add("Imprimir pedido", "ghost", () => printProducao(o));
+    add("Imprimir pedido", "ghost", () => imprimirPedido(o));
+    /* acabou o papel de um dos cupons? reimprime só aquele setor */
+    if (partesDoSetor(o, "churrasqueira").length && partesDoSetor(o, "cozinha").length) {
+      const g = mk("div", "reimp"); g.appendChild(mk("span", "", "Reimprimir:"));
+      [["churrasqueira", "Churrasqueira"], ["cozinha", "Cozinha"]].forEach(([st, rot]) => {
+        const b = mk("button", "btn small ghost", rot); b.type = "button"; b.setAttribute("aria-label", "Reimprimir o cupom da " + rot.toLowerCase());
+        b.onclick = () => reimprimirSetor(o, st); g.appendChild(b);
+      });
+      acts.appendChild(g);
+    }
     if (!o.mesa || !ehMesaNum(o.mesa)) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
     if (ATIVOS.includes(o.status)) add("Cancelar", "ghost", () => { if (confirm("Cancelar o pedido #" + nPed(o) + "?")) setStatus(o, "cancelado"); });
   } else {
@@ -723,13 +831,25 @@ const printQ = []; let printing = false;
 function queuePrint(o) {
   if (jaImpresso(o.id)) return;
   markPrinted(o.id);
-  if (VIEW === "todos") { if (partesOf(o).some(p => p.setor !== "bebidas")) printQ.push({ o, st: "todos" }); }   /* só bebida não gera cupom */
-  else if (partesDoSetor(o, VIEW).length) printQ.push({ o, st: VIEW });
+  /* no caixa (uma impressora só) saem 2 cupons: 1 da churrasqueira e 1 da cozinha; bebida sozinha não gera cupom */
+  const setores = VIEW === "todos" ? ["churrasqueira", "cozinha"] : [VIEW];
+  setores.forEach(st => { if (partesDoSetor(o, st).length) printQ.push({ o, st }); });
+  runQ();
+}
+function reimprimirSetor(o, st) {
+  printQ.push({ o, st });
+  avisar("Reimprimindo o cupom da " + SETORES[st].toLowerCase() + " (pedido #" + nPed(o) + ").");
+  runQ();
+}
+function imprimirPedido(o) {
+  const antes = printQ.length;
+  ["churrasqueira", "cozinha"].forEach(st => { if (partesDoSetor(o, st).length) printQ.push({ o, st }); });
+  if (printQ.length === antes) { avisar("Este pedido não tem itens para a churrasqueira nem para a cozinha."); return; }
   runQ();
 }
 function runQ() {
   if (printing || !printQ.length) return;
-  printing = true; const j = printQ.shift(); if (j.st === "todos") printProducao(j.o); else printSetor(j.o, j.st);
+  printing = true; const j = printQ.shift(); printSetor(j.o, j.st);
   setTimeout(() => { printing = false; runQ(); }, 2500);
 }
 function speak(o) {
@@ -742,7 +862,7 @@ function speak(o) {
 function paintToggles() {
   $("autoBtn").setAttribute("aria-pressed", String(autoPrint));
   $("autoBtn").textContent = (VIEW === "todos" ? "Impressão automática (1 impressora): " : "Impressão automática: ") + (autoPrint ? "ligada" : "desligada");
-  $("autoNota").textContent = VIEW === "todos" ? "Ligue só se uma única impressora atende tudo. Se a churrasqueira e a cozinha têm impressora própria, deixe desligado aqui." : "Imprime sozinho cada pedido novo deste setor.";
+  $("autoNota").textContent = VIEW === "todos" ? "Ligue só se uma única impressora atende tudo: saem 2 cupons por pedido (1 da churrasqueira e 1 da cozinha). Se a churrasqueira e a cozinha têm impressora própria, deixe desligado aqui." : "Imprime sozinho cada pedido novo deste setor.";
   $("autoBtn").title = VIEW === "todos" ? "Ligue só se uma única impressora atende tudo. Se a churrasqueira e a cozinha têm impressora própria, deixe desligado aqui." : "Imprime sozinho cada pedido novo deste setor.";
   $("voiceBtn").setAttribute("aria-pressed", String(voice));
   $("voiceBtn").textContent = voice ? "Voz ativada" : "Ler pedidos em voz alta";
@@ -1081,16 +1201,20 @@ function contaCard(c) {
   el.appendChild(head);
   el.appendChild(mk("div", "local", c.cliente));
   c.pedidos.forEach(o => {
-    el.appendChild(mk("div", "ped-h", "Pedido #" + nPed(o) + " · " + horaDia(o) + " · " + (STATUS[o.status] || o.status) + (isAdic(o) ? " · adicional" : "")));
+    const ph = mk("div", "ped-h");
+    ph.appendChild(mk("span", "", "Pedido #" + nPed(o) + " · " + horaDia(o) + " · " + (STATUS[o.status] || o.status) + (isAdic(o) ? " · adicional" : "")));
+    if (ATIVOS.includes(o.status)) { const be = mk("button", "btn small green", "Entregue"); be.type = "button"; be.onclick = () => entregar(o); ph.appendChild(be); }
+    el.appendChild(ph);
     const ul = mk("ul", "itens"); ul.style.margin = "4px 0"; ul.style.padding = "4px 0";
     (o.itens || []).forEach(i => { const li = mk("li", "", i.qtd + "x " + i.nome); if (i.detalhe) li.appendChild(mk("small", "", i.detalhe)); ul.appendChild(li); });
     el.appendChild(ul);
   });
-  if (c.emAndamento) el.appendChild(mk("div", "warn", c.emAndamento + (c.emAndamento > 1 ? " pedidos ainda não foram entregues." : " pedido ainda não foi entregue.")));
+  if (c.pendentes) el.appendChild(mk("div", "warn", "Falta entregar " + c.pendentes + (c.pendentes > 1 ? " pedidos. " : " pedido. ") + msgBloqueio(c.pendentes)));
   const tot = mk("div", "tot"); tot.append(mk("span", "", "Total da conta"), mk("span", "", brl.format(c.total))); el.appendChild(tot);
   const acts = mk("div", "acts");
   const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
   add("Fechar conta", "green", () => openPay(c));
+  if (c.pendentes) { const bf = acts.lastChild; bf.classList.add("bloqueado"); bf.title = msgBloqueio(c.pendentes); bf.setAttribute("aria-disabled", "true"); }
   add("Imprimir conta", "ghost", () => printConta(c));
   add("Adicionar itens", "gold", () => openAdd(c.pedidos[c.pedidos.length - 1]));
   el.appendChild(acts);
@@ -1102,10 +1226,11 @@ function paintPay() {
   const c = PAY.c;
   $("payTitle").textContent = "Fechar conta — " + localDe(c.mesa) + " · " + c.cliente;
   $("payTotal").textContent = brl.format(c.total);
-  $("payWarn").hidden = !c.emAndamento;
-  $("payWarn").textContent = c.emAndamento + (c.emAndamento > 1 ? " pedidos ainda não foram entregues." : " pedido ainda não foi entregue.");
+  $("payWarn").hidden = !c.pendentes;
+  $("payWarn").textContent = "Falta entregar " + c.pendentes + (c.pendentes > 1 ? " pedidos." : " pedido.");
 }
 function openPay(c) {
+  if (c.pendentes) { avisar(msgBloqueio(c.pendentes), true); return; }
   PAY.c = c; PAY.forma = ""; $("payErr").textContent = ""; $("payOk").disabled = true;
   paintPay();
   const box = $("payOpts"); box.innerHTML = "";
@@ -1122,6 +1247,7 @@ async function fecharConta() {
   /* confere de novo: pode ter entrado um pedido adicional enquanto a janela estava aberta */
   const atual = contasAbertas().find(x => x.mesa === PAY.c.mesa && normNome(x) === normNome(PAY.c));
   if (!atual) { $("payDlg").close(); avisar("Esta conta já foi fechada."); render(); return; }
+  if (atual.pendentes) { $("payDlg").close(); avisar(msgBloqueio(atual.pendentes), true); render(); return; }
   if (Math.abs(atual.total - PAY.c.total) > 0.001) {
     PAY.c = atual; paintPay(); $("payErr").textContent = "A conta mudou (novo pedido). Confira o novo total e confirme de novo."; return;
   }
@@ -1173,13 +1299,13 @@ $("payClose").onclick = () => $("payDlg").close();
 /* ============ ADICIONAR ITENS A UM PEDIDO (feito pelo atendente) ============ */
 const allItems = {};
 MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
-const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {}, q: "", modo: "adicional", tipo: "balcao", pay: "" };
+const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {}, q: "", modo: "adicional", tipo: "balcao", pay: "", passo: 1 };
 const keyOf = (id, o, e) => id + "|" + o + "|" + (e === null || e === undefined ? "" : e);
 const parseKey = (k) => { const [id, o, e] = k.split("|"); return { id, o: +o, e: e === "" || e === undefined ? null : +e }; };
 
 function openAdd(o) {
   AD.o = o; AD.modo = "adicional"; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
-  $("addDlg").classList.remove("novo"); $("novoCampos").hidden = true; $("addTotLabel").textContent = "Total do adicional"; $("addSend").textContent = "Enviar adicional";
+  $("addDlg").classList.remove("novo", "passo1", "passo2"); $("novoCampos").hidden = true; $("addTotLabel").textContent = "Total do adicional"; $("addSend").textContent = "Enviar adicional";
   $("addBusca").value = ""; $("addBuscaLimpar").hidden = true;
   $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
   $("addTitle").textContent = "Adicionar itens — Pedido #" + nPed(o) + " · " + localDe(o.mesa) + " · " + o.cliente;
@@ -1188,11 +1314,18 @@ function openAdd(o) {
 }
 /* ---- Novo pedido lançado pelo caixa (balcão, mesa ou viagem) ---- */
 const FORMAS_NOVO = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheiro", "Misto"];
+const estreito = () => !!(window.matchMedia && window.matchMedia("(max-width: 859px)").matches);   /* celular */
+function setPasso(n) {
+  AD.passo = n; const dlg = $("addDlg");
+  dlg.classList.toggle("passo1", n === 1); dlg.classList.toggle("passo2", n === 2);
+  $("passo1Btn").setAttribute("aria-pressed", String(n === 1)); $("passo2Btn").setAttribute("aria-pressed", String(n === 2));
+  if (n === 2 && estreito()) setTimeout(() => { try { if (!$("novoNome").value) $("novoNome").focus(); } catch (e) {} }, 80);
+}
 function openNovo() {
   AD.o = null; AD.modo = "novo"; AD.tipo = "balcao"; AD.pay = ""; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
   $("addBusca").value = ""; $("addBuscaLimpar").hidden = true; $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
-  $("novoNome").value = ""; $("novoMesa").value = "";
-  $("addDlg").classList.add("novo"); $("addTitle").textContent = "Novo pedido"; $("novoCampos").hidden = false; $("addTotLabel").textContent = "Total do pedido"; $("addSend").textContent = "Enviar pedido";
+  $("novoNome").value = ""; $("novoMesa").value = ""; $("novoTel").value = "";
+  $("addDlg").classList.add("novo"); setPasso(1); $("addMenu").scrollTop = 0; $("addTitle").textContent = "Novo pedido"; $("novoCampos").hidden = false; $("addTotLabel").textContent = "Total do pedido"; $("addSend").textContent = "Enviar pedido";
   renderNovo(); renderAdd(); $("addDlg").showModal();
   setTimeout(() => { try { $("novoNome").focus(); } catch (e) {} }, 50);
 }
@@ -1204,6 +1337,7 @@ function renderNovo() {
     box.appendChild(b);
   });
   $("novoMesaCampo").hidden = AD.tipo !== "mesa";
+  $("novoTelCampo").hidden = AD.tipo !== "viagem";
   const pay = $("novoPay"); pay.innerHTML = "";
   (AD.tipo === "viagem" ? [] : [["depois", "Pagar depois (conta aberta)"]]).concat(FORMAS_NOVO.map(f => [f, f])).forEach(([v, rot]) => {
     const b = mk("button", "btn ghost", rot); b.type = "button"; b.setAttribute("aria-pressed", String(AD.pay === v));
@@ -1238,16 +1372,24 @@ function resultadosBusca(q) {
   return out;
 }
 const chaveAdd = (item) => keyOf(item.id, AD.sel[item.id] || 0, item.espeto ? (AD.esp[item.id] ?? 0) : null);
+function stpAdd(key, qty, nome) {
+  const st = mk("div", "stp");
+  const m = mk("button", "", "−"); m.type = "button"; m.setAttribute("aria-label", "Remover um " + nome); m.onclick = () => addChange(key, -1);
+  const pl = mk("button", "", "+"); pl.type = "button"; pl.setAttribute("aria-label", "Adicionar um " + nome); pl.onclick = () => addChange(key, 1);
+  st.append(m, mk("output", "", qty), pl); return st;
+}
 function linhaAdd(item) {
   const sel = AD.sel[item.id] || 0, esp = item.espeto ? (AD.esp[item.id] ?? 0) : null;
   const key = chaveAdd(item);
+  const linhas = item.espeto ? Object.entries(AD.cart).filter(([k]) => k.startsWith(item.id + "|")) : [];
   const row = mk("div", "mi");
   const info = mk("div", "", item.nome); info.appendChild(mk("small", "", brl.format(priceOf(item, sel))));
   row.appendChild(info);
-  const st = mk("div", "stp");
-  const m = mk("button", "", "−"); m.type = "button"; m.setAttribute("aria-label", "Remover um " + item.nome); m.onclick = () => addChange(key, -1);
-  const p = mk("button", "", "+"); p.type = "button"; p.setAttribute("aria-label", "Adicionar um " + item.nome); p.onclick = () => addChange(key, 1);
-  st.append(m, mk("output", "", AD.cart[key] || 0), p); row.appendChild(st);
+  if (item.espeto) {
+    /* cada espeto escolhido vira uma linha própria: dá para pedir várias jantinhas com espetos diferentes */
+    const b = mk("button", "btn gold small", linhas.length ? "Adicionar outra" : "Adicionar"); b.type = "button";
+    b.setAttribute("aria-label", "Adicionar " + item.nome); b.onclick = () => addChange(key, 1); row.appendChild(b);
+  } else row.appendChild(stpAdd(key, AD.cart[key] || 0, item.nome));
   if (item.opcoes || item.espeto) {
     const ctl = mk("div", "ctl");
     if (item.opcoes) {
@@ -1262,9 +1404,19 @@ function linhaAdd(item) {
     }
     row.appendChild(ctl);
   }
+  if (linhas.length) {
+    const box = mk("div", "unids"); box.appendChild(mk("div", "t", "No pedido:"));
+    linhas.forEach(([k, q]) => {
+      const { o, e } = parseKey(k), ln = mk("div", "unid");
+      const txt = (item.opcoes ? item.opcoes[o].nome + " · " : "") + (e !== null && TRAD[e] ? TRAD[e] : "");
+      ln.append(mk("span", "", txt), stpAdd(k, q, item.nome + " " + txt)); box.appendChild(ln);
+    });
+    row.appendChild(box);
+  }
   return row;
 }
 function renderAdd() {
+  const rolagem = $("addMenu").scrollTop;
   const busca = AD.q.trim();
   const tabs = $("addTabs"); tabs.innerHTML = ""; tabs.hidden = !!busca;
   MENU.forEach(c => {
@@ -1291,6 +1443,9 @@ function renderAdd() {
       sec.itens.forEach(item => { if (!item.esgotado) box.appendChild(linhaAdd(item)); });
     });
   }
+  $("addMenu").scrollTop = rolagem;
+  const nItens = addLinhas().reduce((a, l) => a + l.qtd, 0);
+  $("passo1Btn").textContent = "1 · Itens" + (nItens ? " (" + nItens + ")" : "");
   const taxa = (AD.modo === "novo" && AD.tipo === "viagem") ? TAXA_EMBALAGEM : 0;
   $("addTotal").textContent = brl.format(addLinhas().reduce((a, l) => a + l.subtotal, 0) + taxa);
   $("addTaxaTxt").hidden = !taxa; $("addTaxaTxt").textContent = "Inclui a taxa de embalagem de " + brl.format(taxa) + ".";
@@ -1307,13 +1462,18 @@ $("addBusca").addEventListener("keydown", (e) => {
 async function sendNovo(L) {
   const err = (t) => { $("addErr").textContent = t; };
   const nome = $("novoNome").value.trim();
-  if (!nome) { err("Informe o nome do cliente, para chamar quando o pedido ficar pronto."); $("novoNome").focus(); return; }
+  if (!nome) { err("Informe o nome do cliente, para chamar quando o pedido ficar pronto."); if (estreito()) setPasso(2); $("novoNome").focus(); return; }
   let mesa = null;
   if (AD.tipo === "balcao") mesa = "Balcão";
-  if (AD.tipo === "mesa") { mesa = $("novoMesa").value.trim(); if (!ehMesaNum(mesa)) { err("Informe o número da mesa."); $("novoMesa").focus(); return; } }
-  if (!L.length) { err("Escolha pelo menos um item."); return; }
+  if (AD.tipo === "mesa") { mesa = $("novoMesa").value.trim(); if (!ehMesaNum(mesa)) { err("Informe o número da mesa."); if (estreito()) setPasso(2); $("novoMesa").focus(); return; } }
+  if (!L.length) { err("Escolha pelo menos um item."); if (estreito()) setPasso(1); return; }
   if (!AD.pay) { err(AD.tipo === "viagem" ? "Escolha a forma de pagamento." : "Escolha como o cliente vai pagar, ou “Pagar depois”."); return; }
-  const taxa = AD.tipo === "viagem" ? TAXA_EMBALAGEM : 0, obs = $("addObs").value.trim();
+  let tel = "";
+  if (AD.tipo === "viagem" && $("novoTel").value.trim()) {
+    tel = normTel($("novoTel").value);
+    if (!tel) { err("Confira o número do WhatsApp (com DDD) ou deixe em branco."); if (estreito()) setPasso(2); $("novoTel").focus(); return; }
+  }
+  const taxa = AD.tipo === "viagem" ? TAXA_EMBALAGEM : 0, obs = [$("addObs").value.trim(), tel ? "[tel:" + tel + "]" : ""].filter(Boolean).join(" ");
   const body = { cliente: nome, mesa, pagamento: AD.pay === "depois" ? null : AD.pay, observacoes: obs || null, itens: L, taxa, total: L.reduce((a, l) => a + l.subtotal, 0) + taxa };
   const h = { apikey: CFG.key, "Content-Type": "application/json", Prefer: "return=minimal" };
   if (CFG.key.startsWith("eyJ")) h.Authorization = "Bearer " + CFG.key;
@@ -1355,26 +1515,6 @@ async function sendAdd() {
 $("addSend").onclick = sendAdd;
 $("addClose").onclick = () => $("addDlg").close();
 
-/* ============ CUPOM ÚNICO DO PEDIDO (caixa): uma folha, com seções por setor, sem preços ============ */
-function printProducao(o) {
-  const t = $("ticket"); t.innerHTML = "";
-  const line = (cls, txt) => t.appendChild(mk("div", cls, txt));
-  const hr = () => t.appendChild(document.createElement("hr"));
-  line("c big", "PEDIDO #" + nPed(o));
-  if (isAdic(o)) line("c big", "*** ADICIONAL ***");
-  line("c", new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
-  hr();
-  line("b big", localDe(o.mesa).toUpperCase());
-  line("", "Cliente: " + o.cliente);
-  ["churrasqueira", "cozinha", "bebidas"].forEach(st => {
-    const ps = partesDoSetor(o, st); if (!ps.length) return;
-    hr(); line("b", "== " + SETORES[st].toUpperCase() + " ==");
-    ps.forEach(p => { line("b big", p.qtd + "x " + p.txt); if (p.nota) line("", "   " + p.nota); });
-  });
-  if (obsTxt(o)) { hr(); line("b", "OBS.: " + obsTxt(o)); }
-  window.print();
-}
-
 /* ============ CUPOM POR SETOR (sem preços) ============ */
 function printSetor(o, st) {
   const t = $("ticket"); t.innerHTML = "";
@@ -1387,13 +1527,53 @@ function printSetor(o, st) {
   line("b big", localDe(o.mesa).toUpperCase());
   line("", "Cliente: " + o.cliente);
   hr();
-  partesDoSetor(o, st).forEach(p => {
-    line("b big", p.qtd + "x " + p.txt);
-    if (p.nota) line("", "   " + p.nota);
+  /* linhas iguais viram uma só (ex.: 3 jantinhas iguais na cozinha = "3x Jantinha ..."), economiza papel */
+  const grupos = new Map();
+  partesDoSetor(o, st).forEach(x => {
+    const k = x.txt + "|" + (x.nota || ""), g = grupos.get(k) || { txt: x.txt, nota: x.nota, qtd: 0 };
+    g.qtd += Number(x.qtd) || 0; grupos.set(k, g);
+  });
+  grupos.forEach(g => {
+    line("b big", g.qtd + "x " + g.txt);
+    if (g.nota) line("", "   " + g.nota);
   });
   if (obsTxt(o)) { hr(); line("b", "OBS.: " + obsTxt(o)); }
   window.print();
 }
+
+/* ============ ALERTA PISCANDO DE PEDIDO NOVO ============ */
+let alertaLigado = true;
+const alertaChave = () => "jp_alerta_" + VIEW;
+const ALERTA = { n: 0, timer: null, tituloBase: "" };
+function paintAlerta() {
+  $("alertaBtn").setAttribute("aria-pressed", String(alertaLigado));
+  $("alertaBtn").textContent = alertaLigado ? "Alerta piscando: ligado" : "Alerta piscando: desligado";
+}
+function carregarAlerta() { try { alertaLigado = localStorage.getItem(alertaChave()) !== "0"; } catch (e) { alertaLigado = true; } paintAlerta(); }
+function alertarNovos(lista) {
+  if (!alertaLigado || !lista.length) return;
+  ALERTA.n += lista.length;
+  const o = lista[lista.length - 1];
+  $("alertaTitulo").textContent = ALERTA.n > 1 ? ALERTA.n + " NOVOS PEDIDOS" : (isAdic(o) ? "PEDIDO ADICIONAL" : "NOVO PEDIDO");
+  $("alertaDet").textContent = "#" + nPed(o) + " · " + localDe(o.mesa) + " · " + o.cliente;
+  $("alertaNovo").hidden = false;
+  try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
+  if (!ALERTA.timer) {
+    ALERTA.tituloBase = document.title;
+    ALERTA.timer = setInterval(() => { document.title = document.title === ALERTA.tituloBase ? "🔔 NOVO PEDIDO!" : ALERTA.tituloBase; }, 1000);
+  }
+}
+function pararAlerta() {
+  $("alertaNovo").hidden = true; ALERTA.n = 0;
+  if (ALERTA.timer) { clearInterval(ALERTA.timer); ALERTA.timer = null; document.title = ALERTA.tituloBase || document.title; }
+}
+$("alertaNovo").addEventListener("click", pararAlerta);
+$("alertaBtn").onclick = () => {
+  alertaLigado = !alertaLigado;
+  try { localStorage.setItem(alertaChave(), alertaLigado ? "1" : "0"); } catch (e) {}
+  if (!alertaLigado) pararAlerta();
+  paintAlerta();
+};
 
 /* ============ SOM (já vem ligado; para desligar é só tocar no botão) ============ */
 let somLigado = true;
@@ -1524,7 +1704,7 @@ try { $("manter").checked = localStorage.getItem("jp_manter") === "1"; } catch (
 $("marcaAgua").style.backgroundImage = "url('" + $("logoTop").src + "')";
 (function () { const i = $("loginLogo"); if (i) i.src = $("logoTop").src; })();
 function enter() {
-  paintView();
+  paintView(); carregarAlerta();
   $("novoBtn").hidden = VIEW !== "todos";   /* só o caixa lança pedidos */
   carregarSom(); prepararAudio();
   $("login").hidden = true; $("app").hidden = false;
@@ -1550,6 +1730,12 @@ $("refreshBtn").onclick = async () => {
 };
 $("ajBtn").onclick = () => $("ajDlg").showModal();
 $("novoBtn").onclick = openNovo;
+$("passo1Btn").onclick = () => setPasso(1);
+$("passo2Btn").onclick = () => setPasso(2);
+$("addNext").onclick = () => {
+  if (!addLinhas().length) { $("addErr").textContent = "Escolha pelo menos um item."; return; }
+  $("addErr").textContent = ""; setPasso(2);
+};
 $("ajFechar").onclick = () => $("ajDlg").close();
 $("ajDlg").addEventListener("click", (e) => { if (e.target === $("ajDlg")) $("ajDlg").close(); });
 $("logoutBtn").onclick = logout;

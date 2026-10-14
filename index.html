@@ -6,7 +6,7 @@
 <title>Jantinha da Polly — Cardápio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@1,700&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #0E0B0A;
@@ -102,6 +102,11 @@ main { max-width: 640px; margin: 0 auto; padding: 8px 16px 130px; }
 .item .desc { margin: 2px 0 0; color: var(--muted); font-size: .93rem; max-width: 44ch; }
 .item .price { font-weight: 700; color: var(--accent-text); margin-top: 4px; }
 .item .ctrl { align-self: center; justify-self: end; }
+.unids { grid-column: 1 / -1; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.unids .t { font-weight: 700; font-size: .9rem; color: var(--muted); margin-bottom: 4px; }
+.unid { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 5px 0; }
+.unid span { font-weight: 600; }
+.unids .hint { margin: 6px 0 0; }
 .opts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
 .opt { border: 1.5px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: .92rem; font-weight: 600; }
 .opt[aria-pressed="true"] { border-color: var(--ouro); background: var(--ouro); color: var(--on-ouro); }
@@ -152,10 +157,26 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 .sums div { display: flex; justify-content: space-between; padding: 2px 0; color: var(--muted); }
 .sums .total { color: var(--ink); font-size: 1.3rem; font-weight: 700; padding-top: 6px; }
 .actions { display: grid; gap: 10px; }
+.seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg2 button { border: 2px solid var(--line); background: var(--surface); padding: 11px 8px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+.seg2 button[aria-pressed="true"] { border-color: var(--ouro); background: var(--ouro); color: var(--on-ouro); }
+.acomp { margin: 0 0 12px; }
+.acomp-passos { display: flex; gap: 6px; margin-bottom: 8px; }
+.acomp-passos span { flex: 1; text-align: center; padding: 6px 4px; border-radius: 8px; border: 1.5px solid var(--line); font-size: .85rem; font-weight: 700; color: var(--muted); }
+.acomp-passos span.on { background: #1FA855; border-color: #1FA855; color: #fff; }
+.acomp-txt { font-weight: 700; margin: 0; }
+.acomp-bar { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 25; max-width: 616px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #1B1412; color: #fff; font-weight: 700; border: 2px solid var(--ouro); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.acomp-bar.pronto { background: #1FA855; border-color: #fff; animation: pulso 1.4s ease-in-out infinite; }
+.acomp-bar.cancelado { background: var(--brasa); border-color: #fff; }
+.acomp-bar.acima { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+.acomp-bar button { border: 0; background: rgba(255, 255, 255, .2); color: inherit; width: 34px; height: 34px; border-radius: 8px; font-size: 1.1rem; cursor: pointer; flex: none; }
+@keyframes pulso { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+@media (prefers-reduced-motion: reduce) { .acomp-bar.pronto { animation: none; } }
 .sent { background: var(--bg); border-radius: 12px; padding: 14px; margin-top: 12px; }
 .sent p { margin: 0 0 10px; }
 
 /* Rodapé e painel do dono */
+.credito { margin: 0 0 4px; font-family: "Dancing Script", "Segoe Script", "Brush Script MT", cursive; font-size: 1.05rem; line-height: 1.2; color: var(--ink); opacity: .8; }
 .versao { margin: 0 0 6px; font-size: .75rem; opacity: .5; }
 .foot { max-width: 640px; margin: 0 auto; padding: 0 16px 130px; color: var(--muted); font-size: .9rem; }
 .linkbtn { background: none; border: 0; padding: 8px 0; text-decoration: underline; cursor: pointer; color: inherit; }
@@ -208,7 +229,8 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 <main id="menu" class="noprint" aria-live="polite"></main>
 
 <div class="foot noprint">
-  <p class="versao" id="versao">Versão 12/10/2026 · 9</p>
+  <p class="credito">Desenvolvido por Cristiano Muniz Pessoa</p>
+  <p class="versao" id="versao">Versão 12/10/2026 · 14</p>
 </div>
 
 <div class="cartbar noprint" id="cartbar" hidden>
@@ -217,6 +239,8 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
     <span id="barTotal">R$ 0,00</span>
   </button>
 </div>
+
+<div class="acomp-bar noprint" id="acompBar" role="status" aria-live="polite" hidden><span id="acompBarTxt"></span><button type="button" id="acompBarX" aria-label="Fechar este aviso">✕</button></div>
 
 <dialog id="sheet" class="noprint" aria-labelledby="sheetTitle">
   <div class="sheet">
@@ -227,16 +251,27 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
     <div id="lines"></div>
     <div id="orderForm">
       <div class="fields">
-        <div class="row2">
-          <div class="field">
-            <label for="fNome">Seu nome</label>
-            <input id="fNome" name="apelido-do-pedido" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="40">
+        <div class="field" id="tipoWrap">
+          <label id="tipoRot">Como você quer receber o pedido?</label>
+          <div class="seg2" role="group" aria-labelledby="tipoRot">
+            <button type="button" id="tipoLocal" aria-pressed="false">Comer no local</button>
+            <button type="button" id="tipoRetirada" aria-pressed="true">Retirada</button>
           </div>
-          <div class="field">
-            <label for="fMesa">Mesa</label>
-            <input id="fMesa" name="numero-da-mesa" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="Ex.: 5">
-            <div class="hint" id="mesaHint">Deixe vazio para retirada.</div>
-          </div>
+          <div class="hint" id="tipoHint"></div>
+        </div>
+        <div class="field">
+          <label for="fNome">Seu nome</label>
+          <input id="fNome" name="apelido-do-pedido" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="40">
+        </div>
+        <div class="field" id="fMesaWrap" hidden>
+          <label for="fMesa">Número da mesa</label>
+          <input id="fMesa" name="numero-da-mesa" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="Ex.: 5">
+          <div class="hint" id="mesaHint"></div>
+        </div>
+        <div class="field" id="fTelWrap">
+          <label for="fTel">Seu WhatsApp (opcional)</label>
+          <input id="fTel" name="whatsapp-aviso" type="tel" inputmode="tel" autocomplete="off" maxlength="20" placeholder="(62) 9 9999-9999">
+          <div class="hint">Para avisarmos quando o pedido estiver pronto para retirada.</div>
         </div>
         <div class="field" id="fPagWrap">
           <label for="fPag">Pagamento</label>
@@ -266,6 +301,10 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
     </div>
     <div class="sent" id="sent" hidden>
       <p id="sentTexto"><b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente.</p>
+      <div class="acomp" id="acomp" hidden>
+        <div class="acomp-passos" id="acompPassos"><span>Recebido</span><span>Em preparo</span><span>Pronto</span></div>
+        <p class="acomp-txt" id="acompTxt"></p>
+      </div>
       <p>Se quiser acrescentar mais alguma coisa depois, é só chamar o atendente.</p>
       <div class="actions">
         <a class="btn ghost" id="reopenWa" href="#" target="_blank" rel="noopener">Abrir o WhatsApp de novo</a>
@@ -293,7 +332,7 @@ const CONFIG = {
 /* ============ ESTADO ============ */
 const $ = (id) => document.getElementById(id);
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const state = { q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, fallback: false, recap: null, lastHref: "" };
+const state = { q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, fallback: false, recap: null, lastHref: "", tipo: "retirada", pedidoId: null };
 
 function store(key, val) {
   try { if (val === undefined) { const v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; }
@@ -337,7 +376,7 @@ function totals() {
     const { id, o } = parseKey(k); const it = allItems[id]; if (!it) return;
     n += q; sub += q * priceOf(it, o);
   });
-  const retirada = !$("fMesa").value.trim();
+  const retirada = !ehLocal();
   const taxa = n > 0 && retirada ? CONFIG.taxaEmbalagem : 0;
   return { n, sub, taxa, t: sub + taxa };
 }
@@ -352,6 +391,27 @@ function mesaFromUrl() {
   } catch (e) { return ""; }
 }
 const urlMesa = mesaFromUrl();
+
+/* ============ COMER NO LOCAL x RETIRADA ============ */
+function ehLocal() { return state.tipo === "local" || !!$("fMesa").value.trim(); }
+function setTipo(t) {
+  state.tipo = t;
+  if (t === "retirada") $("fMesa").value = "";
+  else if (!$("fMesa").value.trim() && urlMesa) $("fMesa").value = urlMesa;
+  store("jp_form", { nome: $("fNome").value, mesa: $("fMesa").value, pag: $("fPag").value, t: Date.now() });
+  renderSums(); updateSendLink(); renderBar();
+  if (t === "local" && !$("fMesa").value.trim()) { try { $("fMesa").focus(); } catch (e) {} }
+}
+const normTel = (s) => { const d = String(s || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) return "55" + d; if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d; return ""; };
+const fmtTel = (t) => { const d = String(t).replace(/^55/, ""); return d.length === 11 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7) : d.length === 10 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6) : t; };
+function novoId() {
+  try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+  const b = new Uint8Array(16);
+  try { crypto.getRandomValues(b); } catch (e) { for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256); }
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+  return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+}
 
 /* ============ RENDER: CARDÁPIO ============ */
 function renderTabs() {
@@ -423,6 +483,7 @@ function renderItem(item) {
   const esp = item.espeto ? (state.esp[item.id] ?? 0) : undefined;
   const key = keyOf(item.id, sel, esp);
   const qty = state.cart[key] || 0;
+  const linhasItem = item.espeto ? Object.entries(state.cart).filter(([k]) => k.startsWith(item.id + "|")) : [];   /* o que já foi escolhido, espeto por espeto */
   const li = document.createElement("li"); li.className = "item" + (item.esgotado ? " out" : "");
 
   const info = document.createElement("div");
@@ -433,7 +494,11 @@ function renderItem(item) {
 
   const ctrl = document.createElement("div"); ctrl.className = "ctrl";
   if (item.esgotado) ctrl.textContent = "Esgotado";
-  else if (qty === 0) {
+  else if (item.espeto) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn add";
+    b.textContent = linhasItem.length ? "Adicionar outra" : "Adicionar"; b.setAttribute("aria-label", "Adicionar " + item.nome);
+    b.onclick = () => change(key, 1); ctrl.appendChild(b);
+  } else if (qty === 0) {
     const b = document.createElement("button"); b.type = "button"; b.className = "btn add";
     b.textContent = "Adicionar"; b.setAttribute("aria-label", "Adicionar " + item.nome);
     b.onclick = () => change(key, 1); ctrl.appendChild(b);
@@ -458,6 +523,20 @@ function renderItem(item) {
     TRAD.forEach((n, i) => { const op = document.createElement("option"); op.value = i; op.textContent = n; if (i === esp) op.selected = true; s.appendChild(op); });
     s.onchange = () => { state.esp[item.id] = +s.value; renderAll(); const again = $("esp-" + item.id); if (again) again.focus(); };
     w.append(lab, s); li.appendChild(w);
+  }
+  if (item.espeto && linhasItem.length) {
+    const box = document.createElement("div"); box.className = "unids";
+    const t = document.createElement("div"); t.className = "t"; t.textContent = "No seu pedido:"; box.appendChild(t);
+    linhasItem.forEach(([k, q]) => {
+      const { o, e } = parseKey(k);
+      const row = document.createElement("div"); row.className = "unid";
+      const sp = document.createElement("span");
+      sp.textContent = (item.opcoes ? item.opcoes[o].nome + " · " : "") + (e !== null && TRAD[e] ? TRAD[e] : "");
+      row.append(sp, stepper(k, q, item.nome + " " + sp.textContent)); box.appendChild(row);
+    });
+    const dica = document.createElement("p"); dica.className = "hint";
+    dica.textContent = "Quer outro espeto? Escolha o espeto acima e toque em “Adicionar outra”.";
+    box.appendChild(dica); li.appendChild(box);
   }
   return li;
 }
@@ -485,21 +564,24 @@ function renderSums() {
   $("sumTaxaRow").hidden = taxa === 0;
   $("sumTaxa").textContent = brl.format(taxa);
   $("sheetTotal").textContent = brl.format(t);
-  const comMesa = !!$("fMesa").value.trim();
-  const direto = comMesa && !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);   /* no local: vai direto para a cozinha */
+  const local = ehLocal();
+  const direto = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);   /* o pedido vai direto para a cozinha (local ou retirada) */
   $("sendDireto").hidden = !direto;
   $("send").hidden = direto && !state.fallback;
   $("copy").hidden = direto;
-  $("fPagWrap").hidden = comMesa;
-  $("mesaHint").textContent = comMesa
-    ? (direto ? "Consumo no local: o pedido vai direto para a cozinha e você escolhe como pagar na hora de fechar a conta." : "Consumo no local: você escolhe como pagar na hora de fechar a conta.") : "Sem mesa = retirada, com taxa de embalagem de " + brl.format(CONFIG.taxaEmbalagem) + ".";
+  $("tipoLocal").setAttribute("aria-pressed", String(local)); $("tipoRetirada").setAttribute("aria-pressed", String(!local));
+  $("fMesaWrap").hidden = !local; $("fTelWrap").hidden = local; $("fPagWrap").hidden = local;
+  $("tipoHint").textContent = local
+    ? (direto ? "Você consome aqui: o pedido vai direto para a cozinha e você paga na hora de fechar a conta." : "Você consome aqui: paga na hora de fechar a conta.")
+    : "Retirada: escolha a forma de pagamento. Avisamos quando o pedido estiver pronto.";
+  $("mesaHint").textContent = local && urlMesa && $("fMesa").value.trim() === String(urlMesa) ? "Mesa lida do QR Code." : "";
 }
 
 function renderLines() {
   const box = $("lines"); box.innerHTML = "";
   if (state.enviado && state.recap) {
     $("orderForm").hidden = true;
-    const h = document.createElement("p"); h.className = "empty"; h.style.fontWeight = "700"; h.textContent = "Pedido enviado" + (state.recap.mesa ? " — mesa " + state.recap.mesa : "");
+    const h = document.createElement("p"); h.className = "empty"; h.style.fontWeight = "700"; h.textContent = "Pedido enviado" + (state.recap.mesa ? " — mesa " + state.recap.mesa : " — retirada");
     box.appendChild(h);
     state.recap.linhas.forEach(l => {
       const row = document.createElement("div"); row.className = "line";
@@ -545,6 +627,8 @@ function buildMessage() {
   L.push("*Novo pedido — " + CONFIG.nome + "*");
   L.push("Cliente: " + nome);
   L.push(mesa ? "Mesa " + mesa : "Retirada");
+  const telw = !mesa ? normTel($("fTel").value) : "";
+  if (telw) L.push("WhatsApp do cliente: " + fmtTel(telw));
   L.push(mesa ? "Pagamento: na hora de fechar a conta" : "Pagamento: " + $("fPag").value);
   L.push("");
   Object.entries(state.cart).forEach(([k, q]) => {
@@ -570,11 +654,14 @@ function orderData() {
     if (e !== null) d.push("espeto: " + TRAD[e]);
     return { qtd: q, nome: it.nome, detalhe: d.join(", "), subtotal: q * priceOf(it, o), partes: partesDe(it, o, e, q) };
   });
+  if (!state.pedidoId) state.pedidoId = novoId();   /* o mesmo código serve para acompanhar o pedido e evita pedido duplicado */
+  const mesaV = $("fMesa").value.trim(), tel = !mesaV ? normTel($("fTel").value) : "";
   return {
+    id: state.pedidoId,
     cliente: $("fNome").value.trim(),
-    mesa: $("fMesa").value.trim() || null,
-    pagamento: $("fMesa").value.trim() ? null : $("fPag").value,
-    observacoes: $("fObs").value.trim() || null,
+    mesa: mesaV || null,
+    pagamento: mesaV ? null : $("fPag").value,
+    observacoes: [$("fObs").value.trim(), tel ? "[tel:" + tel + "]" : ""].filter(Boolean).join(" ") || null,
     itens, taxa, total: t
   };
 }
@@ -585,7 +672,7 @@ async function saveOrder() {
   if (CONFIG.supabaseKey.startsWith("eyJ")) h.Authorization = "Bearer " + CONFIG.supabaseKey;
   try {
     const r = await fetch(CONFIG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/pedidos", { method: "POST", keepalive: true, headers: h, body: JSON.stringify(orderData()) });
-    return !!(r && r.ok);
+    return !!(r && (r.ok || r.status === 409));   /* 409 = esse mesmo pedido já tinha chegado */
   } catch (e) { return false; }
 }
 
@@ -599,11 +686,19 @@ function validate() {
     $("formErr").textContent = "Informe seu nome para que possamos chamar você.";
     $("fNome").focus(); return false;
   }
+  if (ehLocal() && !$("fMesa").value.trim()) {
+    $("formErr").textContent = "Informe o número da mesa, ou escolha Retirada.";
+    $("fMesa").focus(); return false;
+  }
+  if (!ehLocal() && $("fTel").value.trim() && !normTel($("fTel").value)) {
+    $("formErr").textContent = "Confira o número do WhatsApp (com DDD) ou deixe em branco.";
+    $("fTel").focus(); return false;
+  }
   $("formErr").textContent = ""; return true;
 }
 
 function renderAll() {
-  cleanCart(); renderTabs(); renderMenu(); renderBar();
+  cleanCart(); renderTabs(); renderMenu(); renderBar(); ajustarBarra();
   if ($("sheet").open) {
     renderLines();
     if (Object.keys(state.cart).length) updateSendLink(); else if (!state.enviado) $("sent").hidden = true;
@@ -621,11 +716,14 @@ function aplicarBusca() {
 $("busca").addEventListener("input", aplicarBusca);
 $("busca").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("busca").blur(); } });
 $("buscaLimpar").onclick = () => { $("busca").value = ""; aplicarBusca(); $("busca").focus(); };
+$("tipoLocal").onclick = () => setTipo("local");
+$("tipoRetirada").onclick = () => setTipo("retirada");
 $("openCart").onclick = () => { $("sent").hidden = true; renderLines(); updateSendLink(); $("sheet").showModal(); };
 $("closeSheet").onclick = () => $("sheet").close();
 $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").close(); });
-["fNome", "fMesa", "fPag", "fObs"].forEach(id => {
+["fNome", "fMesa", "fPag", "fObs", "fTel"].forEach(id => {
   $(id).addEventListener("input", () => {
+    if (id === "fMesa" && $("fMesa").value.trim()) state.tipo = "local";
     updateSendLink(); renderBar();
     store("jp_form", { nome: $("fNome").value, mesa: $("fMesa").value, pag: $("fPag").value, t: Date.now() });
     if (id === "fNome") $("formErr").textContent = "";
@@ -634,6 +732,7 @@ $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sh
 /* Depois que o pedido saiu: guarda só um resumo para mostrar e limpa o carrinho */
 function finalizarEnvio(porWhatsapp) {
   const t = totals();
+  const eraRetirada = !ehLocal(), idEnviado = state.pedidoId;
   state.lastHref = $("send").href;
   state.recap = { mesa: $("fMesa").value.trim(), total: t.t, linhas: Object.entries(state.cart).map(([k, q]) => {
     const { id, o, e } = parseKey(k); const it = allItems[id]; const d = [];
@@ -643,7 +742,7 @@ function finalizarEnvio(porWhatsapp) {
   if (t.taxa) state.recap.linhas.push({ txt: "Taxa de embalagem", valor: t.taxa });
   $("sentTexto").innerHTML = porWhatsapp
     ? "<b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente."
-    : "<b>Pedido enviado!</b> Ele já chegou na cozinha. Em breve levamos até a sua mesa.";
+    : "<b>Pedido enviado!</b> Recebemos o seu pedido e já estamos iniciando o preparo. " + (eraRetirada ? "Avisamos aqui quando estiver pronto para retirada." : "Em breve levamos até a sua mesa.");
   $("reopenWa").hidden = !porWhatsapp;
   if (porWhatsapp) $("reopenWa").href = state.lastHref;
   /* pedido concluído: limpa os dados do cliente. A mesa só continua se veio do QR Code. */
@@ -651,6 +750,8 @@ function finalizarEnvio(porWhatsapp) {
   if (!urlMesa) $("fMesa").value = "";
   store("jp_form", null);
   state.enviado = true; state.fallback = false; state.cart = {}; guardarCarrinho();
+  state.pedidoId = null; $("fTel").value = ""; state.tipo = urlMesa ? "local" : "retirada";
+  if (!porWhatsapp && idEnviado) iniciarAcomp(idEnviado, eraRetirada);
   $("formErr").textContent = "";
   $("orderForm").hidden = true; $("sent").hidden = false;
   renderAll();
@@ -658,7 +759,8 @@ function finalizarEnvio(porWhatsapp) {
 $("send").addEventListener("click", (e) => {
   if (!validate()) { e.preventDefault(); return; }
   updateSendLink();
-  saveOrder();
+  const idZap = state.pedidoId || (state.pedidoId = novoId()), retZap = !ehLocal();
+  saveOrder().then(ok => { if (ok) iniciarAcomp(idZap, retZap); });
   finalizarEnvio(true);
 });
 let enviandoAgora = false;   /* trava: um toque duplo não cria dois pedidos */
@@ -681,16 +783,99 @@ $("copy").onclick = async () => {
   catch (e) { $("formErr").textContent = "Não foi possível copiar. Use o botão do WhatsApp."; }
 };
 $("newOrder").onclick = () => {
-  state.enviado = false; state.recap = null; state.cart = {}; guardarCarrinho(); $("fObs").value = "";
+  state.enviado = false; state.recap = null; state.cart = {}; guardarCarrinho(); $("fObs").value = ""; state.pedidoId = null;
   $("sheet").close(); renderAll();
 };
+
+/* ============ ACOMPANHAR O PEDIDO (recebido → em preparo → pronto) ============ */
+/* Usa a função status_pedido do Supabase (veja o LEIA-ME). Se ela não existir, o cliente só vê a confirmação. */
+const ACOMP = { id: null, retirada: false, status: "novo", numero: null, timer: null, falhas: 0 };
+const ACOMP_CHAVE = "jp_acomp";
+let audioC = null, tituloBase = document.title, tituloTimer = null;
+function prepararAudioCliente() {
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  try { if (!audioC) audioC = new AC(); if (audioC.state === "suspended") audioC.resume(); } catch (e) {}
+}
+["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, prepararAudioCliente, { passive: true }));
+function tocarAviso() {
+  if (!audioC || audioC.state !== "running") return;
+  try {
+    [0, 0.3, 0.6].forEach((d, i) => {
+      const osc = audioC.createOscillator(), g = audioC.createGain();
+      osc.frequency.value = [784, 988, 1175][i]; osc.connect(g); g.connect(audioC.destination);
+      const t0 = audioC.currentTime + d; g.gain.setValueAtTime(0.25, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.26);
+      osc.start(t0); osc.stop(t0 + 0.28);
+    });
+  } catch (e) {}
+}
+function pararTitulo() { if (tituloTimer) { clearInterval(tituloTimer); tituloTimer = null; document.title = tituloBase; } }
+function notificarPronto() {
+  try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+  tocarAviso();
+  if (!tituloTimer) { tituloBase = document.title; tituloTimer = setInterval(() => { document.title = document.title === tituloBase ? "✅ Pedido pronto!" : tituloBase; }, 1000); }
+}
+function textoAcomp() {
+  const n = ACOMP.numero ? " #" + ACOMP.numero : "";
+  switch (ACOMP.status) {
+    case "preparo": return { txt: "Pedido" + n + " em preparo.", passo: 2 };
+    case "pronto": return { txt: ACOMP.retirada ? "Pedido" + n + " pronto! Pode vir retirar." : "Pedido" + n + " pronto!", cls: "pronto", passo: 3 };
+    case "entregue": return { txt: "Pedido" + n + " entregue. Bom apetite!", passo: 3 };
+    case "cancelado": return { txt: "Pedido" + n + " cancelado. Fale com o atendente.", cls: "cancelado", passo: 0 };
+    default: return { txt: "Pedido" + n + " recebido. Já estamos iniciando o preparo.", passo: 1 };
+  }
+}
+function ajustarBarra() { $("acompBar").classList.toggle("acima", !$("cartbar").hidden); }
+function pintarAcomp() {
+  if (!ACOMP.id) { $("acompBar").hidden = true; $("acomp").hidden = true; return; }
+  const { txt, cls, passo } = textoAcomp();
+  $("acompBarTxt").textContent = txt; $("acompBar").className = "acomp-bar noprint" + (cls ? " " + cls : ""); $("acompBar").hidden = false; ajustarBarra();
+  $("acompTxt").textContent = txt; $("acomp").hidden = false;
+  [...$("acompPassos").children].forEach((x, i) => x.classList.toggle("on", i < passo));
+}
+function pararAcomp() {
+  clearInterval(ACOMP.timer); ACOMP.timer = null; ACOMP.id = null; store(ACOMP_CHAVE, null); pararTitulo(); pintarAcomp();
+}
+function iniciarAcomp(id, retirada, t0) {
+  if (!id || !CONFIG.supabaseUrl || !CONFIG.supabaseKey) return;
+  clearInterval(ACOMP.timer);
+  Object.assign(ACOMP, { id, retirada: !!retirada, status: "novo", numero: null, falhas: 0 });
+  store(ACOMP_CHAVE, { id, retirada: !!retirada, t: t0 || Date.now() });
+  pintarAcomp(); ACOMP.timer = setInterval(consultarAcomp, 8000); setTimeout(consultarAcomp, 1500);
+}
+async function consultarAcomp() {
+  if (!ACOMP.id || document.hidden) return;
+  const h = { apikey: CONFIG.supabaseKey, "Content-Type": "application/json" };
+  if (CONFIG.supabaseKey.startsWith("eyJ")) h.Authorization = "Bearer " + CONFIG.supabaseKey;
+  const id = ACOMP.id;
+  try {
+    const r = await fetch(CONFIG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/rpc/status_pedido", { method: "POST", headers: h, body: JSON.stringify({ p_id: id }) });
+    if (id !== ACOMP.id) return;
+    if (r.status === 404) { pararAcomp(); return; }                       /* a função ainda não foi criada no Supabase: some em silêncio */
+    if (!r.ok) throw new Error("falha");
+    const rows = await r.json(), row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) { if (++ACOMP.falhas > 10) pararAcomp(); return; }
+    ACOMP.falhas = 0;
+    const mudou = row.status !== ACOMP.status;
+    ACOMP.status = row.status; ACOMP.numero = row.numero_dia || null;
+    pintarAcomp();
+    if (mudou && row.status === "pronto") notificarPronto();
+    if (row.status === "entregue") { clearInterval(ACOMP.timer); ACOMP.timer = null; store(ACOMP_CHAVE, null); setTimeout(() => { if (ACOMP.status === "entregue") pararAcomp(); }, 8000); }
+    if (row.status === "cancelado") { clearInterval(ACOMP.timer); ACOMP.timer = null; store(ACOMP_CHAVE, null); }
+  } catch (e) { if (++ACOMP.falhas > 20) pararAcomp(); }
+}
+$("acompBarX").onclick = pararAcomp;
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { pararTitulo(); consultarAcomp(); } });
+(function retomarAcomp() {   /* só continua acompanhando um pedido que ainda está em andamento (até 3 horas) */
+  const a = store(ACOMP_CHAVE);
+  if (a && a.id && Date.now() - (a.t || 0) < 3 * 3600 * 1000) iniciarAcomp(a.id, a.retirada, a.t); else if (a) store(ACOMP_CHAVE, null);
+})();
 
 /* ============ PEDIDO ZERA SOZINHO SE A PESSOA SAIR E VOLTAR DEPOIS DE UM TEMPO ============ */
 const PRAZO_INATIVO = 30 * 60 * 1000;
 let ultimaAtividade = Date.now();
 ["pointerdown", "keydown", "input", "touchstart"].forEach(ev => document.addEventListener(ev, () => { ultimaAtividade = Date.now(); }, { passive: true, capture: true }));
 function reiniciarPedido() {
-  state.cart = {}; state.enviado = false; state.recap = null; state.fallback = false; state.q = ""; guardarCarrinho();
+  state.cart = {}; state.enviado = false; state.recap = null; state.fallback = false; state.q = ""; guardarCarrinho(); state.pedidoId = null; $("fTel").value = ""; state.tipo = urlMesa ? "local" : "retirada";
   $("fNome").value = ""; $("fObs").value = ""; $("fPag").selectedIndex = 0; if (!urlMesa) $("fMesa").value = "";
   store("jp_form", null);
   $("busca").value = ""; $("buscaLimpar").hidden = true; $("tabs").hidden = false;
@@ -701,7 +886,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && Da
 
 /* ============ INÍCIO ============ */
 
-$("waLink").href = "https://wa.me/" + CONFIG.whatsapp;
+$("waLink").href = "https://wa.me/" + CONFIG.whatsapp + "?text=" + encodeURIComponent("Olá! Gostaria de fazer um pedido.");
 /* Preenche o formulário só com o que é desta visita. Roda também quando a página volta do histórico,
    porque alguns navegadores devolvem sozinhos o texto antigo dos campos. */
 function aplicarForm() {
@@ -712,6 +897,7 @@ function aplicarForm() {
   $("fMesa").value = urlMesa || (mesmaVisita ? (f.mesa || "") : "");
   if (mesmaVisita && f.pag) $("fPag").value = f.pag; else $("fPag").selectedIndex = 0;
   if (!state.cart || !Object.keys(state.cart).length) $("fObs").value = "";
+  state.tipo = $("fMesa").value.trim() ? "local" : "retirada";
 }
 aplicarForm();
 window.addEventListener("pageshow", () => { aplicarForm(); renderAll(); });
