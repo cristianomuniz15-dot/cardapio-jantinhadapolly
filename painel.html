@@ -300,7 +300,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 14</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 15</p>
     <p class="credito" style="color:var(--muted);margin:4px 0 0">Desenvolvido por Cristiano Muniz Pessoa</p>
   </form>
 </section>
@@ -373,6 +373,19 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     </ul>
     <p class="err" id="pwdMsg" role="alert"></p>
     <button class="btn green" id="pwdSalvar" type="button">Salvar nova senha</button>
+  </div>
+</dialog>
+
+<dialog id="mesaDlg" aria-labelledby="mesaTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="mesaTitle">Definir mesa</h2>
+      <button class="btn ghost small" id="mesaClose" type="button">Cancelar</button>
+    </div>
+    <p class="aj-nota" id="mesaInfo"></p>
+    <div class="campo-s"><label for="mesaNova">Número da mesa</label><input id="mesaNova" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Ex.: 5"></div>
+    <p class="err" id="mesaErr" role="alert"></p>
+    <button class="btn green" id="mesaOk" type="button">Salvar mesa</button>
   </div>
 </dialog>
 
@@ -542,7 +555,8 @@ function passaFiltro(o, f) {
 }
 /* "Mesa" é só um texto: número = mesa; "Balcão" = cliente do balcão; vazio = retirada/viagem */
 const ehMesaNum = (m) => /^\d+$/.test(String(m == null ? "" : m));
-const localDe = (mesa) => !mesa ? "Retirada" : (ehMesaNum(mesa) ? "Mesa " + mesa : mesa);
+const MESA_ADEFINIR = "A definir";   /* cliente que pediu pelo link e ainda não escolheu a mesa */
+const localDe = (mesa) => !mesa ? "Retirada" : (ehMesaNum(mesa) ? "Mesa " + mesa : (mesa === MESA_ADEFINIR ? "Mesa a definir" : mesa));
 const TAXA_EMBALAGEM = 2;   /* taxa de embalagem do pedido para viagem, lançado pelo caixa */
 let silencioAte = 0;        /* depois que o caixa lança um pedido, não apita para o próprio pedido */
 const soBebida = (o) => { const p = partesOf(o); return p.length > 0 && p.every(x => x.setor === "bebidas"); };
@@ -778,8 +792,10 @@ function card(o) {
   const add = (txt, cls, fn) => { const b = mk("button", "btn small " + cls, txt); b.type = "button"; b.onclick = fn; acts.appendChild(b); };
   if (VIEW === "todos") {
     /* um clique só: o pedido vai direto de "Novo" para "Entregue" */
+    /* pediu pelo link sem mesa: a mesa é definida quando o cliente chegar */
+    if (o.mesa === MESA_ADEFINIR && !o.pagamento && o.status !== "cancelado") add("Definir mesa", "gold entregar", () => abrirMesa(grupoDaMesa(o)));
     /* retirada / viagem / balcão: um botão para avisar que o pedido está pronto */
-    if (!ehMesaNum(o.mesa) && (o.status === "novo" || o.status === "preparo")) add(o.mesa === "Balcão" ? "Pronto no balcão" : "Pronto para retirada", "gold entregar", () => marcarPronto(o));
+    if (!ehMesaNum(o.mesa) && (o.status === "novo" || o.status === "preparo")) add(!o.mesa ? "Pronto para retirada" : (o.mesa === "Balcão" ? "Pronto no balcão" : "Pronto"), "gold entregar", () => marcarPronto(o));
     if (o.status === "pronto" && telDe(o)) { const a = mk("a", "btn small gold", "Avisar no WhatsApp"); a.href = linkAviso(o); a.target = "_blank"; a.rel = "noopener"; acts.appendChild(a); }
     if (ATIVOS.includes(o.status)) add("Entregue", "green entregar", () => entregar(o));
     if (o.status !== "cancelado") add("Adicionar itens", "gold", () => openAdd(o));
@@ -793,7 +809,7 @@ function card(o) {
       });
       acts.appendChild(g);
     }
-    if (!o.mesa || !ehMesaNum(o.mesa)) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
+    if (!o.mesa || (!ehMesaNum(o.mesa) && o.mesa !== MESA_ADEFINIR)) add("Cupom com valores", "ghost", () => printTicket(o));   /* retirada: não há "conta da mesa" */
     if (ATIVOS.includes(o.status)) add("Cancelar", "ghost", () => { if (confirm("Cancelar o pedido #" + nPed(o) + "?")) setStatus(o, "cancelado"); });
   } else {
     add("Reimprimir", "ghost", () => printSetor(o, VIEW));
@@ -1217,6 +1233,8 @@ function contaCard(c) {
   if (c.pendentes) { const bf = acts.lastChild; bf.classList.add("bloqueado"); bf.title = msgBloqueio(c.pendentes); bf.setAttribute("aria-disabled", "true"); }
   add("Imprimir conta", "ghost", () => printConta(c));
   add("Adicionar itens", "gold", () => openAdd(c.pedidos[c.pedidos.length - 1]));
+  if (c.mesa === MESA_ADEFINIR) add("Definir mesa", "gold", () => abrirMesa(c.pedidos));
+  else if (ehMesaNum(c.mesa)) add("Trocar mesa", "ghost", () => abrirMesa(c.pedidos));
   el.appendChild(acts);
   return el;
 }
@@ -1229,6 +1247,40 @@ function paintPay() {
   $("payWarn").hidden = !c.pendentes;
   $("payWarn").textContent = "Falta entregar " + c.pendentes + (c.pendentes > 1 ? " pedidos." : " pedido.");
 }
+/* ---- Definir / trocar a mesa (vale para todos os pedidos ainda abertos do mesmo cliente nessa mesa) ---- */
+const MESA = { pedidos: [], cliente: "", atual: "" };
+const grupoDaMesa = (o) => orders.filter(x => x.mesa === o.mesa && normNome(x) === normNome(o) && !x.pagamento && x.status !== "cancelado");
+function abrirMesa(pedidos) {
+  const o = pedidos[0]; if (!o) return;
+  MESA.pedidos = pedidos; MESA.cliente = o.cliente; MESA.atual = o.mesa;
+  const definir = o.mesa === MESA_ADEFINIR;
+  $("mesaTitle").textContent = (definir ? "Definir mesa" : "Trocar mesa") + " — " + o.cliente;
+  $("mesaInfo").textContent = (pedidos.length > 1 ? "Vale para os " + pedidos.length + " pedidos abertos deste cliente. " : "") + (definir ? "Digite a mesa em que o cliente se sentou." : "Mesa atual: " + o.mesa + ". Digite a nova mesa.");
+  $("mesaNova").value = ""; $("mesaErr").textContent = ""; $("mesaOk").disabled = false;
+  $("mesaDlg").showModal();
+  setTimeout(() => { try { $("mesaNova").focus(); } catch (e) {} }, 60);
+}
+async function salvarMesa() {
+  const m = $("mesaNova").value.trim().replace(/^0+(?=\d)/, "");
+  if (!ehMesaNum(m)) { $("mesaErr").textContent = "Digite só o número da mesa."; $("mesaNova").focus(); return; }
+  if (m === MESA.atual) { $("mesaErr").textContent = "Esta já é a mesa atual."; return; }
+  $("mesaOk").disabled = true; $("mesaErr").textContent = "";
+  try {
+    const ids = MESA.pedidos.map(o => o.id).join(",");
+    const r = await api("/rest/v1/pedidos?id=in.(" + ids + ")", { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ mesa: m }) });
+    if (!r.ok) throw new Error("falha");
+    MESA.pedidos.forEach(o => { o.mesa = m; });
+    $("mesaDlg").close();
+    avisar("Mesa " + m + " definida para " + MESA.cliente + (MESA.pedidos.length > 1 ? " (" + MESA.pedidos.length + " pedidos)." : "."));
+    render(); await load();
+  } catch (e) {
+    $("mesaErr").textContent = "Não foi possível salvar a mesa. Confira a conexão e tente de novo.";
+    $("mesaOk").disabled = false;
+  }
+}
+$("mesaOk").onclick = salvarMesa;
+$("mesaClose").onclick = () => $("mesaDlg").close();
+$("mesaNova").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); salvarMesa(); } });
 function openPay(c) {
   if (c.pendentes) { avisar(msgBloqueio(c.pendentes), true); return; }
   PAY.c = c; PAY.forma = ""; $("payErr").textContent = ""; $("payOk").disabled = true;

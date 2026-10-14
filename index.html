@@ -230,7 +230,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 
 <div class="foot noprint">
   <p class="credito">Desenvolvido por Cristiano Muniz Pessoa</p>
-  <p class="versao" id="versao">Versão 12/10/2026 · 14</p>
+  <p class="versao" id="versao">Versão 12/10/2026 · 15</p>
 </div>
 
 <div class="cartbar noprint" id="cartbar" hidden>
@@ -264,7 +264,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
           <input id="fNome" name="apelido-do-pedido" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="40">
         </div>
         <div class="field" id="fMesaWrap" hidden>
-          <label for="fMesa">Número da mesa</label>
+          <label for="fMesa">Número da mesa (se já souber)</label>
           <input id="fMesa" name="numero-da-mesa" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="Ex.: 5">
           <div class="hint" id="mesaHint"></div>
         </div>
@@ -391,6 +391,7 @@ function mesaFromUrl() {
   } catch (e) { return ""; }
 }
 const urlMesa = mesaFromUrl();
+const MESA_ADEFINIR = "A definir";   /* pediu pelo link, vai comer aqui e ainda não escolheu a mesa */
 
 /* ============ COMER NO LOCAL x RETIRADA ============ */
 function ehLocal() { return state.tipo === "local" || !!$("fMesa").value.trim(); }
@@ -574,14 +575,15 @@ function renderSums() {
   $("tipoHint").textContent = local
     ? (direto ? "Você consome aqui: o pedido vai direto para a cozinha e você paga na hora de fechar a conta." : "Você consome aqui: paga na hora de fechar a conta.")
     : "Retirada: escolha a forma de pagamento. Avisamos quando o pedido estiver pronto.";
-  $("mesaHint").textContent = local && urlMesa && $("fMesa").value.trim() === String(urlMesa) ? "Mesa lida do QR Code." : "";
+  $("mesaHint").textContent = !local ? "" : (urlMesa && $("fMesa").value.trim() === String(urlMesa) ? "Mesa lida do QR Code."
+    : ($("fMesa").value.trim() ? "" : "Ainda não escolheu a mesa? Deixe em branco e avise o atendente quando chegar."));
 }
 
 function renderLines() {
   const box = $("lines"); box.innerHTML = "";
   if (state.enviado && state.recap) {
     $("orderForm").hidden = true;
-    const h = document.createElement("p"); h.className = "empty"; h.style.fontWeight = "700"; h.textContent = "Pedido enviado" + (state.recap.mesa ? " — mesa " + state.recap.mesa : " — retirada");
+    const h = document.createElement("p"); h.className = "empty"; h.style.fontWeight = "700"; h.textContent = "Pedido enviado" + (state.recap.mesa ? " — mesa " + state.recap.mesa : (state.recap.local ? " — mesa a definir" : " — retirada"));
     box.appendChild(h);
     state.recap.linhas.forEach(l => {
       const row = document.createElement("div"); row.className = "line";
@@ -626,10 +628,10 @@ function buildMessage() {
   const L = [];
   L.push("*Novo pedido — " + CONFIG.nome + "*");
   L.push("Cliente: " + nome);
-  L.push(mesa ? "Mesa " + mesa : "Retirada");
-  const telw = !mesa ? normTel($("fTel").value) : "";
+  L.push(mesa ? "Mesa " + mesa : (ehLocal() ? "Comer no local (mesa a definir)" : "Retirada"));
+  const telw = !ehLocal() ? normTel($("fTel").value) : "";
   if (telw) L.push("WhatsApp do cliente: " + fmtTel(telw));
-  L.push(mesa ? "Pagamento: na hora de fechar a conta" : "Pagamento: " + $("fPag").value);
+  L.push(ehLocal() ? "Pagamento: na hora de fechar a conta" : "Pagamento: " + $("fPag").value);
   L.push("");
   Object.entries(state.cart).forEach(([k, q]) => {
     const { id, o, e } = parseKey(k); const it = allItems[id];
@@ -655,12 +657,12 @@ function orderData() {
     return { qtd: q, nome: it.nome, detalhe: d.join(", "), subtotal: q * priceOf(it, o), partes: partesDe(it, o, e, q) };
   });
   if (!state.pedidoId) state.pedidoId = novoId();   /* o mesmo código serve para acompanhar o pedido e evita pedido duplicado */
-  const mesaV = $("fMesa").value.trim(), tel = !mesaV ? normTel($("fTel").value) : "";
+  const mesaV = $("fMesa").value.trim(), tel = !ehLocal() ? normTel($("fTel").value) : "";
   return {
     id: state.pedidoId,
     cliente: $("fNome").value.trim(),
-    mesa: mesaV || null,
-    pagamento: mesaV ? null : $("fPag").value,
+    mesa: ehLocal() ? (mesaV || MESA_ADEFINIR) : null,
+    pagamento: ehLocal() ? null : $("fPag").value,
     observacoes: [$("fObs").value.trim(), tel ? "[tel:" + tel + "]" : ""].filter(Boolean).join(" ") || null,
     itens, taxa, total: t
   };
@@ -685,10 +687,6 @@ function validate() {
   if (!$("fNome").value.trim()) {
     $("formErr").textContent = "Informe seu nome para que possamos chamar você.";
     $("fNome").focus(); return false;
-  }
-  if (ehLocal() && !$("fMesa").value.trim()) {
-    $("formErr").textContent = "Informe o número da mesa, ou escolha Retirada.";
-    $("fMesa").focus(); return false;
   }
   if (!ehLocal() && $("fTel").value.trim() && !normTel($("fTel").value)) {
     $("formErr").textContent = "Confira o número do WhatsApp (com DDD) ou deixe em branco.";
@@ -732,9 +730,9 @@ $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sh
 /* Depois que o pedido saiu: guarda só um resumo para mostrar e limpa o carrinho */
 function finalizarEnvio(porWhatsapp) {
   const t = totals();
-  const eraRetirada = !ehLocal(), idEnviado = state.pedidoId;
+  const eraRetirada = !ehLocal(), idEnviado = state.pedidoId, mesaEnviada = $("fMesa").value.trim();
   state.lastHref = $("send").href;
-  state.recap = { mesa: $("fMesa").value.trim(), total: t.t, linhas: Object.entries(state.cart).map(([k, q]) => {
+  state.recap = { mesa: $("fMesa").value.trim(), local: !eraRetirada, total: t.t, linhas: Object.entries(state.cart).map(([k, q]) => {
     const { id, o, e } = parseKey(k); const it = allItems[id]; const d = [];
     if (it.opcoes) d.push(it.opcoes[o].nome); if (e !== null) d.push("espeto: " + TRAD[e]);
     return { txt: q + "x " + it.nome + (d.length ? " (" + d.join(", ") + ")" : ""), valor: q * priceOf(it, o) };
@@ -742,7 +740,7 @@ function finalizarEnvio(porWhatsapp) {
   if (t.taxa) state.recap.linhas.push({ txt: "Taxa de embalagem", valor: t.taxa });
   $("sentTexto").innerHTML = porWhatsapp
     ? "<b>O WhatsApp foi aberto com o seu pedido.</b> Toque em enviar por lá para confirmar com a gente."
-    : "<b>Pedido enviado!</b> Recebemos o seu pedido e já estamos iniciando o preparo. " + (eraRetirada ? "Avisamos aqui quando estiver pronto para retirada." : "Em breve levamos até a sua mesa.");
+    : "<b>Pedido enviado!</b> Recebemos o seu pedido e já estamos iniciando o preparo. " + (eraRetirada ? "Avisamos aqui quando estiver pronto para retirada." : (mesaEnviada ? "Em breve levamos até a sua mesa." : "Quando chegar, avise o atendente qual mesa você escolheu."));
   $("reopenWa").hidden = !porWhatsapp;
   if (porWhatsapp) $("reopenWa").href = state.lastHref;
   /* pedido concluído: limpa os dados do cliente. A mesa só continua se veio do QR Code. */
