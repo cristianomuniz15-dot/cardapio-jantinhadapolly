@@ -59,6 +59,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .mesa-chip { display: inline-block; background: var(--brasa); color: #fff; padding: 2px 12px; border-radius: 999px; font-weight: 700; }
 .closed { background: var(--brasa); color: #fff; text-align: center; padding: 8px 16px; font-weight: 600; }
 .closed.info { background: var(--ouro); color: var(--on-ouro); }
+.closed .sair-teste { margin-left: 10px; background: rgba(0,0,0,.18); color: inherit; border: 0; border-radius: 8px; padding: 4px 10px; font-weight: 700; cursor: pointer; }
+/* fora do horário: só a tela de "estamos fechados", sem o cardápio */
+.fechado-tela { display: none; padding: 26px 16px 40px; }
+.loja-fechada .fechado-tela { display: block; }
+.loja-fechada .tabs-wrap, .loja-fechada #menu, .loja-fechada #mesaRow { display: none !important; }
+.fechado-card { max-width: 520px; margin: 0 auto; background: var(--surface); border: 2px solid var(--line); border-radius: 18px; padding: 26px 22px; text-align: center; }
+.fechado-card h1 { font-family: var(--font-display); font-style: italic; font-size: 2.2rem; margin: 4px 0 10px; color: var(--brasa); }
+.fechado-card p { margin: 8px 0; }
+.fechado-hor { margin: 16px 0; padding: 12px; border-radius: 12px; background: var(--ouro); color: var(--on-ouro); font-weight: 800; line-height: 1.35; }
+.fechado-contato { color: var(--muted); font-size: .95rem; }
+.fechado-contato a { color: var(--accent-text); font-weight: 700; }
+.foot .linkbtn { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: .78rem; padding: 6px 0; }
+.teste-link { margin: 0; }
+#testeDlg { max-width: 380px; width: 92vw; margin: auto; border-radius: 16px; }
+.teste-in { padding: 20px; }
+.teste-in h2 { margin: 0 0 6px; font-family: var(--font-display); font-style: italic; font-size: 1.7rem; }
+.teste-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .ctrl.muted { color: var(--muted); font-weight: 700; }
 .closed[hidden], .mesa-row[hidden] { display: none; }
 .mesa-row { background: var(--surface); border-bottom: 1px solid var(--line); text-align: center; padding: 8px 16px; font-weight: 600; }
@@ -214,6 +231,14 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
   </div>
 </div>
 <div class="closed noprint" id="closed" role="status" hidden></div>
+<section class="fechado-tela noprint" id="fechadoTela" aria-live="polite">
+  <div class="fechado-card">
+    <h1>Estamos fechados</h1>
+    <p id="fechadoTxt"></p>
+    <div class="fechado-hor">Horário de atendimento<br>Segunda a sexta, das 18h às 23h</div>
+    <p class="fechado-contato">Dúvidas? Fale com a gente:<br><a id="fechadoZap" href="#" target="_blank" rel="noopener">WhatsApp 62 98264-2532</a> · <a href="https://instagram.com/jantinhadapolly" target="_blank" rel="noopener">@jantinhadapolly</a></p>
+  </div>
+</section>
 <div class="mesa-row noprint" id="mesaRow" hidden><span class="mesa-chip" id="mesaChip"></span></div>
 
 <div class="tabs-wrap noprint">
@@ -232,7 +257,8 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 
 <div class="foot noprint">
   <p class="credito">Desenvolvido por Cristiano Muniz Pessoa</p>
-  <p class="versao" id="versao">Versão 12/10/2026 · 17</p>
+  <p class="versao" id="versao">Versão 12/10/2026 · 18</p>
+  <p class="teste-link"><button type="button" id="testeAbrir" class="linkbtn">Acesso de teste</button></p>
 </div>
 
 <div class="cartbar noprint" id="cartbar" hidden>
@@ -243,6 +269,17 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 </div>
 
 <div class="acomp-bar noprint" id="acompBar" role="status" aria-live="polite" hidden><span id="acompBarTxt"></span><button type="button" id="acompBarX" aria-label="Fechar este aviso">✕</button></div>
+
+<dialog id="testeDlg" class="noprint" aria-labelledby="testeTit">
+  <div class="teste-in">
+    <h2 id="testeTit">Acesso de teste</h2>
+    <p class="hint">Só para quem faz os testes do sistema. Libera pedidos fora do horário e dos dias de atendimento.</p>
+    <div class="field"><label for="testeUser">Usuário</label><input id="testeUser" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="40"></div>
+    <div class="field"><label for="testeSenha">Senha</label><input id="testeSenha" type="password" autocomplete="off" maxlength="80"></div>
+    <p class="err" id="testeErr" role="alert"></p>
+    <div class="teste-btns"><button type="button" class="btn ghost" id="testeCancelar">Cancelar</button><button type="button" class="btn primary" id="testeEntrar">Entrar</button></div>
+  </div>
+</dialog>
 
 <dialog id="sheet" class="noprint" aria-labelledby="sheetTitle">
   <div class="sheet">
@@ -327,7 +364,9 @@ const CONFIG = {
   taxaEmbalagem: 2,      /* cobrada uma vez por pedido de retirada (sem mesa) */
   abre: 18, fecha: 23,           /* atendimento: das 18h às 23h */
   pedidosAPartir: "18:00",       /* pedidos pelo cardápio (link e QR Code): abrem junto com o atendimento */
-  dias: [1, 2, 3, 4, 5]          /* segunda a sexta (0 = domingo ... 6 = sábado) */
+  dias: [1, 2, 3, 4, 5],         /* segunda a sexta (0 = domingo ... 6 = sábado) */
+  dominioLogin: "jantinhadapolly.com",   /* usuário "cristiano" = cristiano@jantinhadapolly.com no Supabase */
+  usuariosTeste: ["cristiano"]   /* quem pode pedir fora do horário, entrando em "Acesso de teste" no rodapé */
 };
 
 /* O cardápio (itens e preços) fica em cardapio-dados.js */
@@ -336,7 +375,7 @@ const CONFIG = {
 /* ============ ESTADO ============ */
 const $ = (id) => document.getElementById(id);
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const state = { q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, fallback: false, recap: null, lastHref: "", tipo: "retirada", pedidoId: null };
+const state = { removidos: [], ultimosRemovidos: [], q: "", tab: MENU[0].id, sel: {}, esp: {}, cart: {}, enviado: false, fallback: false, recap: null, lastHref: "", tipo: "retirada", pedidoId: null };
 
 function store(key, val) {
   try { if (val === undefined) { const v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; }
@@ -364,7 +403,8 @@ const parseKey = (k) => { const [id, o, e] = k.split("|"); return { id, o: +o, e
 function cleanCart() {
   Object.keys(state.cart).forEach(k => {
     const { id, o, e } = parseKey(k); const it = allItems[id];
-    if (!it || state.cart[k] <= 0 || (it.opcoes && !it.opcoes[o]) || it.esgotado || (it.espeto && (e === null || !TRAD[e]))) delete state.cart[k];
+    if (it && state.cart[k] > 0 && itemIndisp(it)) { if (!state.removidos.includes(it.nome)) state.removidos.push(it.nome); delete state.cart[k]; return; }
+    if (!it || state.cart[k] <= 0 || (it.opcoes && !it.opcoes[o]) || (it.espeto && (e === null || !TRAD[e]))) delete state.cart[k];
   });
 }
 function change(key, delta) {
@@ -399,8 +439,13 @@ const urlMesa = mesaFromUrl();
 /* ============ HORÁRIO DOS PEDIDOS PELO LINK / QR CODE ============ */
 /* Segunda a sexta, das 18h às 23h (horário de Brasília, não importa o relógio do celular).
    Fora disso o cardápio só mostra os itens. A Administração lança pedidos a qualquer hora, pelo painel.
-   Para o dono testar fora do horário: acrescente ?teste=1 ao endereço. */
-const MODO_TESTE = /(^|[?&#])teste=1(&|$)/.test(location.search + location.hash);
+   Quem faz os testes entra em "Acesso de teste" (rodapé) com usuário e senha. */
+const TESTE_CHAVE = "jp_teste";
+/* "Acesso de teste": o usuário entra com login e senha do Supabase (ex.: cristiano). Vale só nesta aba do navegador. */
+function usuarioTeste() {
+  try { const t = JSON.parse(sessionStorage.getItem(TESTE_CHAVE) || "null"); return t && CONFIG.usuariosTeste.includes(t.u) ? t.u : ""; } catch (e) { return ""; }
+}
+const modoTeste = () => !!usuarioTeste();
 function agoraBrasilia() {
   try {
     const parts = {};
@@ -419,7 +464,7 @@ function estadoLoja(a) {
   if (a.min >= CONFIG.fecha * 60) return { aberto: false, motivo: "tarde", a };
   return { aberto: true, antes: a.min < CONFIG.abre * 60, a };
 }
-const lojaAberta = () => MODO_TESTE || estadoLoja().aberto;
+const lojaAberta = () => modoTeste() || estadoLoja().aberto;
 function quandoVoltamos(a) {
   const nomes = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
   for (let i = 1; i <= 7; i++) { const d = (a.dow + i) % 7; if (CONFIG.dias.includes(d)) return i === 1 ? "amanhã" : "na " + nomes[d]; }
@@ -438,16 +483,63 @@ function textoLoja(e) {
 }
 let lojaAbertaAntes = null;
 function atualizarLoja() {
-  const e = estadoLoja(), el = $("closed");
-  const txt = MODO_TESTE ? "Modo de teste: pedidos liberados fora do horário." : textoLoja(e);
-  el.textContent = txt; el.hidden = !txt;
-  el.classList.toggle("info", MODO_TESTE || e.aberto);
+  const e = estadoLoja(), el = $("closed"), teste = modoTeste();
+  const fechado = !teste && !e.aberto;
+  document.body.classList.toggle("loja-fechada", fechado);
+  $("fechadoTxt").textContent = fechado ? textoLoja(e) : "";
+  /* faixa do modo de teste (com o botão para sair) */
+  el.hidden = !teste;
+  if (teste) {
+    const nome = usuarioTeste(), sp = document.createElement("span");
+    sp.textContent = "Modo de teste (" + nome.charAt(0).toUpperCase() + nome.slice(1) + "): pedidos liberados fora do horário e dos dias de atendimento.";
+    const bt = document.createElement("button"); bt.type = "button"; bt.className = "sair-teste"; bt.textContent = "Sair do teste"; bt.onclick = sairTeste;
+    el.replaceChildren(sp, bt); el.classList.add("info");
+  }
   const aberta = lojaAberta();
   if (lojaAbertaAntes !== null && aberta !== lojaAbertaAntes) {
-    if (!aberta && $("sheet").open) $("formErr").textContent = "Os pedidos pelo cardápio foram encerrados. " + textoLoja(e);
+    if (!aberta && $("sheet").open) { $("formErr").textContent = "Os pedidos pelo cardápio foram encerrados. " + textoLoja(e); }
     renderAll();
   }
   lojaAbertaAntes = aberta;
+}
+function sairTeste() { try { sessionStorage.removeItem(TESTE_CHAVE); } catch (e) {} atualizarLoja(); renderAll(); }
+async function entrarTeste() {
+  const err = $("testeErr"); err.textContent = "";
+  const u = $("testeUser").value.trim().toLowerCase().replace(/@.*$/, ""), pw = $("testeSenha").value;
+  if (!u || !pw) { err.textContent = "Digite o usuário e a senha."; return; }
+  const b = $("testeEntrar"); b.disabled = true;
+  try {
+    const r = await fetch(CONFIG.supabaseUrl.replace(/\/$/, "") + "/auth/v1/token?grant_type=password", { method: "POST", headers: { apikey: CONFIG.supabaseKey, "Content-Type": "application/json" }, body: JSON.stringify({ email: u + "@" + CONFIG.dominioLogin, password: pw }) });
+    if (!r.ok) { err.textContent = "Usuário ou senha incorretos."; return; }
+    if (!CONFIG.usuariosTeste.includes(u)) { err.textContent = "Este usuário não tem acesso de teste."; return; }
+    try { sessionStorage.setItem(TESTE_CHAVE, JSON.stringify({ u, t: Date.now() })); } catch (e) {}
+    $("testeSenha").value = ""; $("testeDlg").close(); atualizarLoja(); renderAll();
+  } catch (e) { err.textContent = "Sem conexão. Tente de novo."; }
+  finally { b.disabled = false; }
+}
+$("testeAbrir").onclick = () => { $("testeUser").value = ""; $("testeSenha").value = ""; $("testeErr").textContent = ""; $("testeDlg").showModal(); try { $("testeUser").focus(); } catch (e) {} };
+$("testeCancelar").onclick = () => $("testeDlg").close();
+$("testeEntrar").onclick = entrarTeste;
+$("testeSenha").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); entrarTeste(); } });
+
+/* ============ ITENS INDISPONÍVEIS HOJE (marcados no painel, em "Cardápio do dia") ============ */
+const INDISP = { ids: new Set(), ok: true };
+const itemIndisp = (it) => !!(it.esgotado || INDISP.ids.has(it.id));
+function diaOperacional() {   /* o dia "vira" às 5h, igual ao painel */
+  const t = new Date(Date.now() - 5 * 3600 * 1000);
+  try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(t); } catch (e) { return t.toISOString().slice(0, 10); }
+}
+async function carregarIndisp() {
+  if (!INDISP.ok || !CONFIG.supabaseUrl || !CONFIG.supabaseKey) return;
+  try {
+    const h = { apikey: CONFIG.supabaseKey }; if (CONFIG.supabaseKey.startsWith("eyJ")) h.Authorization = "Bearer " + CONFIG.supabaseKey;
+    const r = await fetch(CONFIG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/indisponiveis?select=item_id&dia=eq." + diaOperacional(), { headers: h });
+    if (r.status === 404) { INDISP.ok = false; return; }   /* a tabela ainda não foi criada no Supabase */
+    if (!r.ok) return;
+    const rows = await r.json(), novo = new Set((Array.isArray(rows) ? rows : []).map(x => x.item_id));
+    const mudou = novo.size !== INDISP.ids.size || [...novo].some(x => !INDISP.ids.has(x));
+    INDISP.ids = novo; if (mudou) renderAll();
+  } catch (e) {}
 }
 const MESA_ADEFINIR = "A definir";   /* pediu pelo link, vai comer aqui e ainda não escolheu a mesa */
 
@@ -474,6 +566,7 @@ function novoId() {
 
 /* ============ RENDER: CARDÁPIO ============ */
 function renderTabs() {
+  if (!lojaAberta()) { $("tabs").innerHTML = ""; return; }
   const el = $("tabs"); el.innerHTML = "";
   MENU.forEach(c => {
     const b = document.createElement("button");
@@ -524,6 +617,7 @@ function renderBusca() {
   }));
 }
 function renderMenu() {
+  if (!lojaAberta()) { $("menu").innerHTML = ""; return; }   /* fechado: o cardápio nem é montado */
   if (state.q.trim()) { renderBusca(); return; }
   const cat = MENU.find(c => c.id === state.tab);
   const main = $("menu"); main.innerHTML = "";
@@ -543,7 +637,7 @@ function renderItem(item) {
   const key = keyOf(item.id, sel, esp);
   const qty = state.cart[key] || 0;
   const linhasItem = item.espeto ? Object.entries(state.cart).filter(([k]) => k.startsWith(item.id + "|")) : [];   /* o que já foi escolhido, espeto por espeto */
-  const li = document.createElement("li"); li.className = "item" + (item.esgotado ? " out" : "");
+  const li = document.createElement("li"); li.className = "item" + (itemIndisp(item) ? " out" : "");
 
   const info = document.createElement("div");
   const h3 = document.createElement("h3"); h3.textContent = item.nome; info.appendChild(h3);
@@ -552,8 +646,7 @@ function renderItem(item) {
   li.appendChild(info);
 
   const ctrl = document.createElement("div"); ctrl.className = "ctrl";
-  if (item.esgotado) ctrl.textContent = "Esgotado";
-  else if (!lojaAberta()) { ctrl.textContent = "Fechado"; ctrl.className = "ctrl muted"; }
+  if (itemIndisp(item)) { ctrl.textContent = "Indisponível"; ctrl.className = "ctrl muted"; }
   else if (item.espeto) {
     const b = document.createElement("button"); b.type = "button"; b.className = "btn add";
     b.textContent = linhasItem.length ? "Adicionar outra" : "Adicionar"; b.setAttribute("aria-label", "Adicionar " + item.nome);
@@ -722,7 +815,7 @@ function orderData() {
     cliente: $("fNome").value.trim(),
     mesa: ehLocal() ? (mesaV || MESA_ADEFINIR) : null,
     pagamento: ehLocal() ? null : $("fPag").value,
-    observacoes: [$("fObs").value.trim(), tel ? "[tel:" + tel + "]" : ""].filter(Boolean).join(" ") || null,
+    observacoes: [$("fObs").value.trim(), tel ? "[tel:" + tel + "]" : "", modoTeste() ? "[teste]" : ""].filter(Boolean).join(" ") || null,
     itens, taxa, total: t
   };
 }
@@ -760,6 +853,11 @@ function validate() {
 
 function renderAll() {
   cleanCart(); renderTabs(); renderMenu(); renderBar(); ajustarBarra();
+  if (state.removidos.length) {
+    state.ultimosRemovidos.push(...state.removidos);
+    if ($("sheet").open) $("formErr").textContent = "Ficou indisponível e saiu do seu pedido: " + state.removidos.join(", ") + ".";
+    state.removidos = [];
+  }
   if ($("sheet").open) {
     renderLines();
     if (Object.keys(state.cart).length) updateSendLink(); else if (!state.enviado) $("sent").hidden = true;
@@ -826,8 +924,17 @@ $("send").addEventListener("click", (e) => {
 });
 let enviandoAgora = false;   /* trava: um toque duplo não cria dois pedidos */
 $("sendDireto").addEventListener("click", async () => {
-  if (enviandoAgora || !validate()) return;
-  enviandoAgora = true;
+  if (enviandoAgora) return;
+  enviandoAgora = true;   /* trava já no primeiro toque (evita pedido duplicado por toque duplo) */
+  state.ultimosRemovidos = [];
+  await Promise.race([carregarIndisp(), new Promise(r => setTimeout(r, 2500))]);   /* confere de novo se algum item acabou (espera no máximo 2,5 s) */
+  cleanCart();
+  if (state.removidos.length) { state.ultimosRemovidos.push(...state.removidos); state.removidos = []; }
+  if (state.ultimosRemovidos.length) {   /* algum item acabou: NÃO envia, deixa o cliente conferir */
+    enviandoAgora = false; const n = [...new Set(state.ultimosRemovidos)].join(", "); state.ultimosRemovidos = [];
+    renderAll(); $("formErr").textContent = "Ficou indisponível e saiu do seu pedido: " + n + ". Confira o pedido e envie de novo."; return;
+  }
+  if (!validate()) { enviandoAgora = false; return; }
   const b = $("sendDireto"), txt = b.textContent;
   b.disabled = true; b.textContent = "Enviando..."; $("formErr").textContent = "";
   let gravou = false;
@@ -947,6 +1054,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && Da
 
 /* ============ INÍCIO ============ */
 
+$("fechadoZap").href = "https://wa.me/" + CONFIG.whatsapp + "?text=" + encodeURIComponent("Olá! Gostaria de uma informação.");
 $("waLink").href = "https://wa.me/" + CONFIG.whatsapp + "?text=" + encodeURIComponent("Olá! Gostaria de fazer um pedido.");
 /* Preenche o formulário só com o que é desta visita. Roda também quando a página volta do histórico,
    porque alguns navegadores devolvem sozinhos o texto antigo dos campos. */
@@ -966,7 +1074,8 @@ window.addEventListener("load", () => setTimeout(aplicarForm, 0));
 if (urlMesa) { $("mesaChip").textContent = "Você está na mesa " + urlMesa; $("mesaRow").hidden = false; }
 atualizarLoja();
 setInterval(atualizarLoja, 30000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizarLoja(); });
+carregarIndisp(); setInterval(carregarIndisp, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { atualizarLoja(); carregarIndisp(); } });
 renderAll();
 </script>
 </body>

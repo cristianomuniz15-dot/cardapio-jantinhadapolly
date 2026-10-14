@@ -243,6 +243,15 @@ table.tb { width: 100%; border-collapse: collapse; background: var(--surface); b
 .ped-h { color: var(--muted); font-weight: 600; font-size: .9rem; margin-top: 8px; }
 .warn { background: var(--bg); color: #FF8A80; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-weight: 600; }
 .badge.adic { background: #fff; color: #B3150F; margin-left: 6px; }
+.badge.teste { background: #7B4FD8; color: #fff; margin-left: 6px; }
+.btn.red { background: var(--brasa); color: #fff; }
+.cd-barra { display: flex; gap: 8px; margin: 10px 0; align-items: center; }
+.cd-barra input { flex: 1; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px; background: var(--bg); color: inherit; font-size: 1rem; }
+.cd-cat { margin: 16px 0 4px; color: var(--ouro); font-family: var(--font-display); font-style: italic; font-size: 1.4rem; }
+.cd-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.cd-item small { display: block; color: var(--muted); }
+.cd-item.fora > div:first-child { opacity: .6; }
+.cd-item .btn { min-width: 118px; }
 .badge.novo { background: var(--brasa); }
 .badge.preparo { background: var(--ouro); color: #1E1500; }
 .badge.pronto { background: var(--verde); }
@@ -300,7 +309,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 17</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 18</p>
     <p class="credito" style="color:var(--muted);margin:4px 0 0">Desenvolvido por Cristiano Muniz Pessoa</p>
   </form>
 </section>
@@ -488,6 +497,7 @@ function paintView() {
   $("title").textContent = nome;
   document.title = nome + " — " + NOME_LOJA;
   if ((filter === "relatorio" || filter === "qr") && !(VIEW === "todos" && isDono())) filter = "andamento";
+  if (filter === "cardapio" && VIEW !== "todos") filter = "andamento";
   try { autoPrint = localStorage.getItem(chaveAuto()) === "1"; } catch (e) { autoPrint = false; }
   paintToggles();
 }
@@ -503,7 +513,8 @@ const isAdic = (o) => /^ADICIONAL/i.test(o.observacoes || "");
 /* o WhatsApp do cliente (retirada/viagem) viaja dentro das observações, como [tel:5562999999999] */
 const TEL_RE = /\s*\[tel:(\d{10,15})\]\s*/i;
 const telDe = (o) => { const m = (o.observacoes || "").match(TEL_RE); return m ? m[1] : ""; };
-const obsTxt = (o) => (o.observacoes || "").replace(TEL_RE, " ").replace(/^\s*ADICIONAL\s*(—\s*)?/i, "").trim();
+const ehTeste = (o) => /\[teste\]/i.test(o.observacoes || "");   /* pedido feito pelo "Acesso de teste" do cardápio */
+const obsTxt = (o) => (o.observacoes || "").replace(TEL_RE, " ").replace(/\s*\[teste\]\s*/ig, " ").replace(/^\s*ADICIONAL\s*(—\s*)?/i, "").trim();
 const normTel = (s) => { const d = String(s || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) return "55" + d; if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d; return ""; };
 const fmtTel = (t) => { const d = String(t).replace(/^55/, ""); return d.length === 11 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7) : d.length === 10 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6) : t; };
 const msgBloqueio = (n) => "A conta só poderá ser fechada mediante a entrega " + (n > 1 ? "dos pedidos." : "do pedido.");
@@ -639,11 +650,11 @@ async function api(path, opts = {}, retry = true) {
 function logout() {
   pararAlerta();
   const era = session;
-  saveSession(null); clearInterval(timer); seen = null; orders = [];
+  saveSession(null); clearInterval(timer); clearInterval(indispTimer); seen = null; orders = [];
   /* avisa o Supabase para encerrar este login também no servidor (assim ele não é renovado por outra aba) */
   if (era && era.access_token && CFG.url) { try { fetch(CFG.url + "/auth/v1/logout", { method: "POST", keepalive: true, headers: { apikey: CFG.key, Authorization: "Bearer " + era.access_token } }).catch(() => {}); } catch (e) {} }
   /* não deixa nada do usuário anterior na tela */
-  REL.node = null; REL.data = null; REL.k = "hoje"; QR.node = null; QR.ultimo = null; NUMDIA.clear(); filter = "andamento";
+  REL.node = null; REL.data = null; REL.k = "hoje"; QR.node = null; QR.ultimo = null; CD.node = null; CD.q = ""; INDISP.ids = new Set(); NUMDIA.clear(); filter = "andamento";
   esconderSenhaLogin(); $("senha").value = ""; $("email").value = ""; $("loginErr").textContent = "";
   $("app").hidden = true; $("login").hidden = false; VIEW = "todos"; document.title = "Administração — " + NOME_LOJA;
   try { $("email").focus(); } catch (e) {}
@@ -738,10 +749,10 @@ const ATIVOS = ["novo", "preparo", "pronto"];
 function renderTabs() {
   const n = (f) => f === "contas" ? contasAbertas().length : orders.filter(o => doMeuSetor(o) && passaFiltro(o, f)).length;
   const el = $("tabs"); el.innerHTML = "";
-  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues hoje"]], (VIEW === "todos" && isDono()) ? [["relatorio", "Relatórios"], ["qr", "QR Codes"]] : []);
+  const abas = [["andamento", "Em andamento"]].concat(VIEW === "todos" ? [["contas", "Contas abertas"]] : [], [["entregue", "Entregues hoje"]], (VIEW === "todos" ? [["cardapio", "Cardápio do dia"]] : []), (VIEW === "todos" && isDono()) ? [["relatorio", "Relatórios"], ["qr", "QR Codes"]] : []);
   abas.forEach(([k, label]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "tab";
-    b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + (k === "relatorio" || k === "qr" ? "" : " (" + n(k) + ")");
+    b.setAttribute("aria-pressed", String(filter === k)); b.textContent = label + (k === "relatorio" || k === "qr" ? "" : k === "cardapio" ? (INDISP.ids.size ? " (" + INDISP.ids.size + " indisp.)" : "") : " (" + n(k) + ")");
     b.onclick = () => { filter = k; render(); };
     el.appendChild(b);
   });
@@ -754,6 +765,7 @@ function render() {
   if (filter === "contas" && VIEW === "todos") { renderContas(list); return; }
   if (filter === "relatorio" && VIEW === "todos" && isDono()) { renderRelatorio(list); return; }
   if (filter === "qr" && VIEW === "todos" && isDono()) { renderQrTab(list); return; }
+  if (filter === "cardapio" && VIEW === "todos") { renderCardapioDia(list); return; }
   const vis = orders.filter(o => doMeuSetor(o) && passaFiltro(o, filter));
   if (!vis.length) {
     const p = document.createElement("p"); p.className = "empty";
@@ -775,6 +787,7 @@ function card(o) {
   if (VIEW === "todos" && telDe(o)) c.appendChild(mk("div", "hora", "WhatsApp: " + fmtTel(telDe(o))));
   const bd = mk("span", "badge " + o.status, STATUS[o.status] || o.status); c.appendChild(bd);
   if (isAdic(o)) c.appendChild(mk("span", "badge adic", "ADICIONAL"));
+  if (ehTeste(o)) c.appendChild(mk("span", "badge teste", "TESTE"));
   if (VIEW === "todos" && soBebida(o)) c.appendChild(mk("span", "badge beb", "SÓ BEBIDA"));
   const ul = mk("ul", "itens");
   if (VIEW === "todos") {
@@ -843,6 +856,7 @@ function printTicket(o) {
   const hr = () => t.appendChild(document.createElement("hr"));
   line("c big", NOME_LOJA);
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
+  if (ehTeste(o)) line("c big", "*** TESTE ***");
   line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   line("b big", localDe(o.mesa).toUpperCase());
@@ -963,12 +977,12 @@ function grupoDoItem(i) {
 async function buscarPedidos(ini, fim) {
   const out = [], pag = 500;
   for (let off = 0; ; off += pag) {
-    const url = "/rest/v1/pedidos?select=criado_em,total,pagamento,status,itens&status=neq.cancelado"
+    const url = "/rest/v1/pedidos?select=criado_em,total,pagamento,status,itens,observacoes&status=neq.cancelado"
       + "&criado_em=gte." + encodeURIComponent(ini.toISOString()) + "&criado_em=lt." + encodeURIComponent(fim.toISOString())
       + "&order=criado_em.asc,id.asc&limit=" + pag + "&offset=" + off;
     const r = await api(url);
     if (!r.ok) throw new Error("falha");
-    const lote = await r.json(); out.push(...lote);
+    const lote = await r.json(); out.push(...lote.filter(x => !ehTeste(x)));   /* pedidos de teste não contam nas vendas */
     if (lote.length < pag) break;
   }
   return out;
@@ -1222,6 +1236,87 @@ function renderQrTab(list) {
   list.appendChild(QR.node);
 }
 
+/* ============ CARDÁPIO DO DIA (o que está INDISPONÍVEL hoje) ============ */
+const INDISP = { ids: new Set(), ok: true };
+const itemIndisp = (it) => !!(it.esgotado || INDISP.ids.has(it.id));
+function diaOperacional() {   /* o dia "vira" às 5h, igual ao resto do painel */
+  const t = new Date(Date.now() - HORA_VIRADA * 3600 * 1000);
+  try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(t); } catch (e) { return t.toISOString().slice(0, 10); }
+}
+const usuarioAtual = () => ((session && session.user && session.user.email) || "").split("@")[0];
+let indispTimer = null;
+async function carregarIndisp() {
+  if (!session || !INDISP.ok) return;
+  try {
+    const r = await api("/rest/v1/indisponiveis?select=item_id&dia=eq." + diaOperacional());
+    if (r.status === 404) { INDISP.ok = false; if (filter === "cardapio") pintarCardapioDia(); return; }   /* a tabela ainda não foi criada */
+    if (!r.ok) return;
+    const rows = await r.json(), novo = new Set((Array.isArray(rows) ? rows : []).map(x => x.item_id));
+    const mudou = novo.size !== INDISP.ids.size || [...novo].some(x => !INDISP.ids.has(x));
+    INDISP.ids = novo;
+    if (mudou) { renderTabs(); if (filter === "cardapio") pintarCardapioDia(); }
+  } catch (e) {}
+}
+async function alternarIndisp(item) {
+  if (item.esgotado) return;   /* esgotado fixo no arquivo de dados */
+  const marcar = !INDISP.ids.has(item.id);
+  try {
+    const r = marcar
+      ? await api("/rest/v1/indisponiveis?on_conflict=item_id", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ item_id: item.id, dia: diaOperacional(), por: usuarioAtual() }) })
+      : await api("/rest/v1/indisponiveis?item_id=eq." + encodeURIComponent(item.id), { method: "DELETE" });
+    if (!r.ok) throw new Error("falha");
+    if (marcar) INDISP.ids.add(item.id); else INDISP.ids.delete(item.id);
+    renderTabs(); pintarCardapioDia();
+    avisar(item.nome + (marcar ? " marcado como INDISPONÍVEL hoje." : " liberado de novo."), false);
+  } catch (e) { avisar("Não foi possível salvar. Confira a conexão e tente de novo.", true); }
+}
+async function liberarTodosIndisp() {
+  if (!INDISP.ids.size || !confirm("Liberar todos os itens indisponíveis de hoje?")) return;
+  try {
+    const r = await api("/rest/v1/indisponiveis?item_id=neq.__nenhum__", { method: "DELETE" });
+    if (!r.ok) throw new Error("falha");
+    INDISP.ids = new Set(); renderTabs(); pintarCardapioDia(); avisar("Todos os itens foram liberados.", false);
+  } catch (e) { avisar("Não foi possível salvar. Confira a conexão e tente de novo.", true); }
+}
+const CD = { node: null, q: "" };
+function montarCardapioDia() {
+  const n = mk("section", "rel");
+  n.appendChild(mk("h2", "", "Cardápio do dia"));
+  n.appendChild(mk("p", "rel-nota", "Marque o que NÃO tem hoje. O item aparece como “Indisponível” no cardápio do cliente e some da tela de pedidos do caixa. Tudo volta ao normal sozinho amanhã, às " + HORA_VIRADA + "h."));
+  const aviso = mk("p", "err"); aviso.id = "cdAviso"; n.appendChild(aviso);
+  const barra = mk("div", "cd-barra");
+  const busca = document.createElement("input"); busca.id = "cdBusca"; busca.type = "search"; busca.placeholder = "Buscar item..."; busca.autocomplete = "off"; busca.setAttribute("aria-label", "Buscar item");
+  busca.oninput = () => { CD.q = busca.value; pintarCardapioDia(); };
+  const lib = mk("button", "btn ghost small", "Liberar todos"); lib.type = "button"; lib.id = "cdLiberar"; lib.onclick = liberarTodosIndisp;
+  barra.append(busca, lib); n.appendChild(barra);
+  const lista = mk("div", "cd-lista"); lista.id = "cdLista"; n.appendChild(lista);
+  CD.node = n;
+}
+function pintarCardapioDia() {
+  if (!CD.node || !$("cdLista")) return;
+  $("cdAviso").textContent = INDISP.ok ? "" : "Falta um passo no Supabase para usar o Cardápio do dia (veja o LEIA-ME, seção “Cardápio do dia”).";
+  $("cdLiberar").disabled = !INDISP.ids.size || !INDISP.ok;
+  const lista = $("cdLista"); lista.innerHTML = "";
+  const termos = semAcento(CD.q).split(/\s+/).filter(Boolean);
+  MENU.forEach(c => {
+    const achados = [];
+    c.secoes.forEach(sec => sec.itens.forEach(it => { if (termos.every(t => semAcento(it.nome + " " + c.nome + " " + sec.titulo).includes(t))) achados.push([sec, it]); }));
+    if (!achados.length) return;
+    lista.appendChild(mk("h3", "cd-cat", c.nome));
+    achados.forEach(([sec, it]) => {
+      const fixo = !!it.esgotado, fora = itemIndisp(it);
+      const row = mk("div", "cd-item" + (fora ? " fora" : ""));
+      const info = mk("div", "", it.nome);
+      info.appendChild(mk("small", "", (sec.titulo !== c.nome ? sec.titulo + " · " : "") + (fixo ? "indisponível fixo (arquivo de dados)" : brl.format(priceOf(it, 0)))));
+      const b = mk("button", "btn small " + (fora ? "red" : "green"), fora ? "Indisponível" : "Disponível");
+      b.type = "button"; b.setAttribute("aria-pressed", String(fora)); b.setAttribute("aria-label", it.nome + ": " + (fora ? "indisponível, tocar para liberar" : "disponível, tocar para marcar indisponível"));
+      b.disabled = fixo || !INDISP.ok; b.onclick = () => alternarIndisp(it);
+      row.append(info, b); lista.appendChild(row);
+    });
+  });
+}
+function renderCardapioDia(list) { if (!CD.node) montarCardapioDia(); list.appendChild(CD.node); pintarCardapioDia(); carregarIndisp(); }
+
 /* ============ CONTAS DA MESA: fechar conta e imprimir conferência ============ */
 function renderContas(list) {
   const cs = contasAbertas();
@@ -1434,7 +1529,7 @@ function resultadosBusca(q) {
   MENU.forEach(c => {
     const grupos = [];
     c.secoes.forEach(sec => {
-      const itens = sec.itens.filter(it => !it.esgotado && termos.every(t => semAcento([it.nome, it.desc, c.nome, sec.titulo, BUSCA_EXTRA[c.id], (it.opcoes || []).map(o => o.nome).join(" ")].join(" ")).includes(t)));
+      const itens = sec.itens.filter(it => !itemIndisp(it) && termos.every(t => semAcento([it.nome, it.desc, c.nome, sec.titulo, BUSCA_EXTRA[c.id], (it.opcoes || []).map(o => o.nome).join(" ")].join(" ")).includes(t)));
       if (itens.length) grupos.push({ titulo: sec.titulo, itens });
     });
     if (grupos.length) out.push({ cat: c, grupos });
@@ -1510,7 +1605,7 @@ function renderAdd() {
     const cat = MENU.find(c => c.id === AD.tab);
     cat.secoes.forEach(sec => {
       box.appendChild(mk("div", "sec", sec.titulo));
-      sec.itens.forEach(item => { if (!item.esgotado) box.appendChild(linhaAdd(item)); });
+      sec.itens.forEach(item => { if (!itemIndisp(item)) box.appendChild(linhaAdd(item)); });
     });
   }
   $("addMenu").scrollTop = rolagem;
@@ -1592,6 +1687,7 @@ function printSetor(o, st) {
   const hr = () => t.appendChild(document.createElement("hr"));
   line("c big", SETORES[st].toUpperCase());
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
+  if (ehTeste(o)) line("c big", "*** TESTE ***");
   line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   line("b big", localDe(o.mesa).toUpperCase());
@@ -1779,6 +1875,7 @@ function enter() {
   carregarSom(); prepararAudio();
   $("login").hidden = true; $("app").hidden = false;
   load(); clearInterval(timer); timer = setInterval(load, 6000);
+  INDISP.ok = true; INDISP.ids = new Set(); carregarIndisp(); clearInterval(indispTimer); indispTimer = setInterval(carregarIndisp, 30000);
 }
 $("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
