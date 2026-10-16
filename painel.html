@@ -309,7 +309,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 18</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 19</p>
     <p class="credito" style="color:var(--muted);margin:4px 0 0">Desenvolvido por Cristiano Muniz Pessoa</p>
   </form>
 </section>
@@ -1238,7 +1238,21 @@ function renderQrTab(list) {
 
 /* ============ CARDÁPIO DO DIA (o que está INDISPONÍVEL hoje) ============ */
 const INDISP = { ids: new Set(), ok: true };
-const itemIndisp = (it) => !!(it.esgotado || INDISP.ids.has(it.id));
+/* Espeto livre = não está esgotado nem marcado como indisponível. Vale para a caixa de espeto das jantinhas. */
+const espetoLivre = (i) => { const t = allItems["t" + i]; return !!t && !t.esgotado && !INDISP.ids.has(t.id); };
+const espetosLivres = () => TRAD.map((_, i) => i).filter(espetoLivre);
+const diretoIndisp = (it) => !!(it.esgotado || INDISP.ids.has(it.id));
+function motivoIndisp(it) {   /* por que um item está indisponível sem ter sido marcado direto */
+  if (it.depende && allItems[it.depende] && itemIndisp(allItems[it.depende])) return "depende de: " + allItems[it.depende].nome;
+  if (it.espeto && !espetosLivres().length) return "todos os espetos estão indisponíveis";
+  return "";
+}
+function itemIndisp(it) {
+  if (diretoIndisp(it)) return true;
+  if (it.depende && allItems[it.depende] && itemIndisp(allItems[it.depende])) return true;
+  if (it.espeto && !espetosLivres().length) return true;
+  return false;
+}
 function diaOperacional() {   /* o dia "vira" às 5h, igual ao resto do painel */
   const t = new Date(Date.now() - HORA_VIRADA * 3600 * 1000);
   try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(t); } catch (e) { return t.toISOString().slice(0, 10); }
@@ -1304,13 +1318,17 @@ function pintarCardapioDia() {
     if (!achados.length) return;
     lista.appendChild(mk("h3", "cd-cat", c.nome));
     achados.forEach(([sec, it]) => {
-      const fixo = !!it.esgotado, fora = itemIndisp(it);
+      const fixo = !!it.esgotado, fora = itemIndisp(it), derivado = fora && !diretoIndisp(it);
       const row = mk("div", "cd-item" + (fora ? " fora" : ""));
       const info = mk("div", "", it.nome);
-      info.appendChild(mk("small", "", (sec.titulo !== c.nome ? sec.titulo + " · " : "") + (fixo ? "indisponível fixo (arquivo de dados)" : brl.format(priceOf(it, 0)))));
+      const nota = fixo ? "indisponível fixo (arquivo de dados)" : derivado ? motivoIndisp(it)
+        : /^t\d+$/.test(it.id) ? brl.format(priceOf(it, 0)) + " · também some da escolha de espeto das jantinhas"
+        : it.id === "n4" ? brl.format(priceOf(it, 0)) + " · também some da jantinha e do espetinho de picanha"
+        : brl.format(priceOf(it, 0));
+      info.appendChild(mk("small", "", (sec.titulo !== c.nome ? sec.titulo + " · " : "") + nota));
       const b = mk("button", "btn small " + (fora ? "red" : "green"), fora ? "Indisponível" : "Disponível");
       b.type = "button"; b.setAttribute("aria-pressed", String(fora)); b.setAttribute("aria-label", it.nome + ": " + (fora ? "indisponível, tocar para liberar" : "disponível, tocar para marcar indisponível"));
-      b.disabled = fixo || !INDISP.ok; b.onclick = () => alternarIndisp(it);
+      b.disabled = fixo || derivado || !INDISP.ok; b.onclick = () => alternarIndisp(it);
       row.append(info, b); lista.appendChild(row);
     });
   });
@@ -1536,7 +1554,8 @@ function resultadosBusca(q) {
   });
   return out;
 }
-const chaveAdd = (item) => keyOf(item.id, AD.sel[item.id] || 0, item.espeto ? (AD.esp[item.id] ?? 0) : null);
+const espetoEscAdd = (item) => { const c = AD.esp[item.id] ?? 0; return espetoLivre(c) ? c : (espetosLivres()[0] ?? 0); };
+const chaveAdd = (item) => keyOf(item.id, AD.sel[item.id] || 0, item.espeto ? espetoEscAdd(item) : null);
 function stpAdd(key, qty, nome) {
   const st = mk("div", "stp");
   const m = mk("button", "", "−"); m.type = "button"; m.setAttribute("aria-label", "Remover um " + nome); m.onclick = () => addChange(key, -1);
@@ -1544,7 +1563,7 @@ function stpAdd(key, qty, nome) {
   st.append(m, mk("output", "", qty), pl); return st;
 }
 function linhaAdd(item) {
-  const sel = AD.sel[item.id] || 0, esp = item.espeto ? (AD.esp[item.id] ?? 0) : null;
+  const sel = AD.sel[item.id] || 0, esp = item.espeto ? espetoEscAdd(item) : null;
   const key = chaveAdd(item);
   const linhas = item.espeto ? Object.entries(AD.cart).filter(([k]) => k.startsWith(item.id + "|")) : [];
   const row = mk("div", "mi");
@@ -1564,7 +1583,7 @@ function linhaAdd(item) {
     }
     if (item.espeto) {
       const se = document.createElement("select"); se.setAttribute("aria-label", "Espeto de " + item.nome);
-      TRAD.forEach((n, i) => { const o = mk("option", "", "Espeto: " + n); o.value = i; if (i === esp) o.selected = true; se.appendChild(o); });
+      TRAD.forEach((n, i) => { if (!espetoLivre(i)) return; const o = mk("option", "", "Espeto: " + n); o.value = i; if (i === esp) o.selected = true; se.appendChild(o); });   /* só os espetos que tem hoje */
       se.onchange = () => { AD.esp[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
     }
     row.appendChild(ctl);
@@ -1580,7 +1599,17 @@ function linhaAdd(item) {
   }
   return row;
 }
+function limparIndispAdd() {
+  const fora = [];
+  Object.keys(AD.cart).forEach(k => {
+    const { id, e } = parseKey(k), it = allItems[id]; if (!it) return;
+    if (itemIndisp(it)) { fora.push(it.nome); delete AD.cart[k]; }
+    else if (it.espeto && e !== null && TRAD[e] && !espetoLivre(e)) { fora.push(it.nome + " com " + TRAD[e]); delete AD.cart[k]; }
+  });
+  if (fora.length) avisar("Ficou indisponível e saiu do pedido: " + fora.join(", ") + ".", true);
+}
 function renderAdd() {
+  limparIndispAdd();
   const rolagem = $("addMenu").scrollTop;
   const busca = AD.q.trim();
   const tabs = $("addTabs"); tabs.innerHTML = ""; tabs.hidden = !!busca;

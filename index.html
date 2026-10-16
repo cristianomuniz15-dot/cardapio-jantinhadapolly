@@ -257,7 +257,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 
 <div class="foot noprint">
   <p class="credito">Desenvolvido por Cristiano Muniz Pessoa</p>
-  <p class="versao" id="versao">Versão 12/10/2026 · 18</p>
+  <p class="versao" id="versao">Versão 12/10/2026 · 19</p>
   <p class="teste-link"><button type="button" id="testeAbrir" class="linkbtn">Acesso de teste</button></p>
 </div>
 
@@ -404,6 +404,7 @@ function cleanCart() {
   Object.keys(state.cart).forEach(k => {
     const { id, o, e } = parseKey(k); const it = allItems[id];
     if (it && state.cart[k] > 0 && itemIndisp(it)) { if (!state.removidos.includes(it.nome)) state.removidos.push(it.nome); delete state.cart[k]; return; }
+    if (it && it.espeto && state.cart[k] > 0 && e !== null && TRAD[e] && !espetoLivre(e)) { const nm = it.nome + " com " + TRAD[e]; if (!state.removidos.includes(nm)) state.removidos.push(nm); delete state.cart[k]; return; }
     if (!it || state.cart[k] <= 0 || (it.opcoes && !it.opcoes[o]) || (it.espeto && (e === null || !TRAD[e]))) delete state.cart[k];
   });
 }
@@ -524,7 +525,16 @@ $("testeSenha").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.
 
 /* ============ ITENS INDISPONÍVEIS HOJE (marcados no painel, em "Cardápio do dia") ============ */
 const INDISP = { ids: new Set(), ok: true };
-const itemIndisp = (it) => !!(it.esgotado || INDISP.ids.has(it.id));
+/* Espeto livre = não está esgotado nem marcado como indisponível no "Cardápio do dia". Vale para a caixa "Escolha o espeto" das jantinhas. */
+const espetoLivre = (i) => { const t = allItems["t" + i]; return !!t && !t.esgotado && !INDISP.ids.has(t.id); };
+const espetosLivres = () => TRAD.map((_, i) => i).filter(espetoLivre);
+const espetoEscolhido = (item) => { const c = state.esp[item.id] ?? 0; return espetoLivre(c) ? c : (espetosLivres()[0] ?? 0); };
+function itemIndisp(it) {
+  if (it.esgotado || INDISP.ids.has(it.id)) return true;
+  if (it.depende && allItems[it.depende] && itemIndisp(allItems[it.depende])) return true;   /* ex.: jantinha de picanha precisa do espeto "Picanha premium" */
+  if (it.espeto && !espetosLivres().length) return true;                                      /* todos os espetos acabaram */
+  return false;
+}
 function diaOperacional() {   /* o dia "vira" às 5h, igual ao painel */
   const t = new Date(Date.now() - 5 * 3600 * 1000);
   try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(t); } catch (e) { return t.toISOString().slice(0, 10); }
@@ -633,7 +643,7 @@ function renderMenu() {
 
 function renderItem(item) {
   const sel = state.sel[item.id] || 0;
-  const esp = item.espeto ? (state.esp[item.id] ?? 0) : undefined;
+  const esp = item.espeto ? espetoEscolhido(item) : undefined;
   const key = keyOf(item.id, sel, esp);
   const qty = state.cart[key] || 0;
   const linhasItem = item.espeto ? Object.entries(state.cart).filter(([k]) => k.startsWith(item.id + "|")) : [];   /* o que já foi escolhido, espeto por espeto */
@@ -673,7 +683,7 @@ function renderItem(item) {
     const w = document.createElement("div"); w.className = "pick";
     const lab = document.createElement("label"); lab.htmlFor = "esp-" + item.id; lab.textContent = "Escolha o espeto";
     const s = document.createElement("select"); s.id = "esp-" + item.id;
-    TRAD.forEach((n, i) => { const op = document.createElement("option"); op.value = i; op.textContent = n; if (i === esp) op.selected = true; s.appendChild(op); });
+    TRAD.forEach((n, i) => { if (!espetoLivre(i)) return; const op = document.createElement("option"); op.value = i; op.textContent = n; if (i === esp) op.selected = true; s.appendChild(op); });   /* só os espetos que tem hoje */
     s.onchange = () => { state.esp[item.id] = +s.value; renderAll(); const again = $("esp-" + item.id); if (again) again.focus(); };
     w.append(lab, s); li.appendChild(w);
   }

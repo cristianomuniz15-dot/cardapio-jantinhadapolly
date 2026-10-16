@@ -3,6 +3,8 @@
    Ele é usado pelo cardápio do cliente (index.html) e pela
    tela do caixa (cozinha.html).
    Para esgotar um item, acrescente  esgotado: true  nele.
+   (Normalmente use a aba "Cardápio do dia" do painel, que vale só para o dia.)
+   "depende: id" = o item some quando aquele outro item estiver indisponível.
    ============================================================ */
 /* Espetinhos tradicionais (R$ 15) */
 const TRAD = ["Contra filé", "Cupim", "Picanha montada", "Frango puro", "Frango c/ bacon", "Tulipa de frango",
@@ -18,12 +20,12 @@ const MENU = [
       { id: "j3", nome: "Jantinha feijão de caldo c/ espeto", desc: "Arroz, feijão de caldo, mandioca, vinagrete e alface.", opcoes: MEIA(30, 28), espeto: true },
       { id: "j4", nome: "Jantinha strogonoff c/ espeto", desc: "Arroz, strogonoff, batata palha, vinagrete e alface.", opcoes: MEIA(35, 32), espeto: true },
       { id: "j5", nome: "Jantinha de strogonoff", desc: "Arroz, strogonoff, batata palha, vinagrete e alface.", opcoes: MEIA(28, 25) },
-      { id: "j6", nome: "Jantinha de picanha Premium", desc: "", preco: 42,
+      { id: "j6", nome: "Jantinha de picanha Premium", desc: "", preco: 42, depende: "n4",
         partes: [["churrasqueira", "Picanha premium", "p/ jantinha de picanha"]] },
       { id: "j7", nome: "Espetinho c/ adicional de mandioca", desc: "Escolha o espeto abaixo.", preco: 18, espeto: true,
         setor: "nenhum", notaEspeto: "c/ adicional de mandioca",
         partes: [["cozinha", "Adicional de mandioca", "p/ espetinho"]] },
-      { id: "j8", nome: "Espetinho de picanha Premium c/ adicional de mandioca", desc: "", preco: 35,
+      { id: "j8", nome: "Espetinho de picanha Premium c/ adicional de mandioca", desc: "", preco: 35, depende: "n4",
         setor: "nenhum",
         partes: [["churrasqueira", "Picanha premium", "c/ adicional de mandioca"], ["cozinha", "Adicional de mandioca", "p/ espetinho"]] }
     ]}
