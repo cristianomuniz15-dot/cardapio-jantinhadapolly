@@ -75,14 +75,7 @@ header.top > * { min-width: 0; }
 main { position: relative; z-index: 1; }
 .acts .btn.entregar { flex: 1 1 100%; min-height: 48px; font-size: 1.05rem; }
 .barra-status .desfazer { background: transparent; border: 0; color: var(--ouro); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 6px 10px; font-size: .95rem; }
-.busca-add { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; }
-.busca-add .campo { position: relative; flex: 1; }
-.busca-add svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
-.busca-add input { width: 100%; padding: 11px 14px 11px 40px; border: 2px solid var(--line); border-radius: 999px; background: var(--bg); font-size: 1rem; }
-.busca-add input:focus { border-color: var(--ouro); outline: none; }
-.busca-add button { background: transparent; border: 0; color: var(--ouro); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 10px 6px; min-height: 44px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.add-info { color: var(--muted); font-size: .9rem; margin: 4px 0 2px; }
 .qr-campos { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 10px 0; }
 .qr-campos .campo-s { margin: 0; flex: 1 1 150px; }
 .qr-campos .campo-s.largo { flex: 1 1 100%; }
@@ -102,74 +95,6 @@ main { position: relative; z-index: 1; }
 .fab { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 6; min-height: 58px; padding: 0 26px; border: 0; border-radius: 999px; background: var(--verde); color: #fff; font-weight: 700; font-size: 1.15rem; box-shadow: 0 6px 18px rgba(0, 0, 0, .55); cursor: pointer; display: inline-flex; align-items: center; gap: 10px; }
 .fab svg { width: 24px; height: 24px; flex: none; }
 main { padding-bottom: 110px; }
-.novo-tipos { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
-.novo-sec { margin: 6px 0 4px; font-weight: 700; color: var(--ouro); font-size: .9rem; }
-#addDlg { height: min(92vh, 920px); }
-#addDlg[open] { display: flex; flex-direction: column; }
-#addDlg .dlg { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%; }
-.dlg-corpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr; grid-template-areas: "form" "itens" "foot"; align-content: start; gap: 6px; }
-#novoCampos { grid-area: form; }
-.dlg-itens { grid-area: itens; min-height: 0; display: flex; flex-direction: column; }
-.dlg-corpo .dlg-foot { grid-area: foot; position: sticky; bottom: 0; }
-#novoPay { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
-#novoPay .btn { width: auto; min-height: 40px; padding: 0 12px; font-size: .92rem; }
-@media (min-width: 860px) {
-  #addDlg.novo { width: min(1020px, 96vw); }
-  #addDlg.novo .dlg-corpo { overflow: hidden; grid-template-columns: 350px 1fr; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "form itens" "foot itens"; column-gap: 20px; align-content: stretch; }
-  #addDlg.novo #novoCampos { overflow-y: auto; padding-right: 4px; }
-  #addDlg.novo .dlg-itens { min-height: 0; }
-  #addDlg.novo #addMenu { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
-  #addDlg.novo .dlg-corpo .dlg-foot { position: static; }
-}
-.unids { grid-column: 1 / -1; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
-.unids .t { font-weight: 700; font-size: .85rem; color: var(--muted); margin-bottom: 2px; }
-.unid { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 0; }
-.unid span { font-weight: 600; }
-.passos { display: none; gap: 8px; margin: 6px 0; }
-.passos .tab { flex: 1; text-align: center; padding: 9px 8px; font-size: .95rem; }
-#addNext { display: none; justify-content: center; align-items: center; }
-.dlg-topo { background: var(--surface); }
-/* CELULAR: a janela ocupa a tela toda, como um aplicativo. Busca e categorias ficam fixas no topo, só a lista rola,
-   e o total com o botão ficam fixos embaixo. No "Novo pedido" são 2 passos: 1 · Itens e 2 · Cliente e pagamento. */
-@media (max-width: 859px) {
-  #addDlg { width: 100vw; max-width: 100vw; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; overflow: hidden; }
-  #addDlg .dlg { padding: 12px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
-  #addDlg .dlg-corpo { display: flex; flex-direction: column; overflow: hidden; gap: 8px; align-content: normal; }
-  #addDlg #novoCampos { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
-  #addDlg .dlg-itens { flex: 1 1 auto; min-height: 0; overflow: hidden; }
-  #addDlg .dlg-topo { flex: none; }
-  #addDlg #addMenu { flex: 1 1 auto; overflow-y: auto; min-height: 0; -webkit-overflow-scrolling: touch; }
-  #addDlg .dlg-corpo .dlg-foot { position: static; flex: none; margin-top: 0; }
-  #addDlg .dlg-head h2 { font-size: 1.05rem; }
-  #addDlg .busca-add { margin: 2px 0 4px; }
-  #addDlg .dlg .tabs .tab { padding: 7px 14px; font-size: .95rem; }
-  #addDlg.novo .passos { display: flex; }
-  #addDlg.novo.passo1 #novoCampos { display: none; }
-  #addDlg.novo.passo2 .dlg-itens { display: none; }
-  #addDlg.novo.passo1 #addObs { display: none; }
-  #addDlg.novo.passo1 #addSend { display: none; }
-  #addDlg.novo.passo1 #addNext { display: inline-flex; justify-content: center; align-items: center; }
-}
-/* telas baixas (celular deitado): tudo mais compacto para sobrar espaço para a lista */
-@media (max-height: 520px) {
-  #addDlg .dlg { padding: 6px 10px; }
-  #addDlg .dlg-head { margin-bottom: 0; }
-  #addDlg .dlg-head h2 { font-size: .95rem; }
-  #addDlg .dlg-head .btn { min-height: 32px; padding: 3px 10px; }
-  #addDlg .passos { margin: 2px 0; }
-  #addDlg .passos .tab { padding: 4px 8px; font-size: .88rem; }
-  #addDlg .busca-add { margin: 2px 0; }
-  #addDlg .busca-add input { padding: 6px 12px 6px 36px; font-size: .95rem; }
-  #addDlg .busca-add button { min-height: 32px; padding: 4px 6px; }
-  #addDlg .dlg .tabs { margin: 2px 0; padding-bottom: 2px; }
-  #addDlg .dlg .tabs .tab { padding: 4px 12px; font-size: .88rem; }
-  #addDlg .dlg-foot { grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; padding-top: 6px; margin-top: 4px; }
-  #addDlg .dlg-foot .tot { grid-column: 1; margin: 0; font-size: 1.05rem; }
-  #addDlg .dlg-foot #addSend, #addDlg .dlg-foot #addNext { grid-column: 2; min-height: 40px; padding: 4px 18px; }
-  #addDlg .dlg-foot #addObs, #addDlg .dlg-foot .err, #addDlg .dlg-foot .hora { grid-column: 1 / -1; }
-  #addDlg .dlg-foot #addObs { padding: 6px 10px; }
-  #addDlg .dlg-foot .err { margin: 0; min-height: 0; font-size: .85rem; }
-}
 .credito { font-family: "Dancing Script", "Segoe Script", "Brush Script MT", cursive; font-size: 1.05rem; line-height: 1.2; }
 .btn[disabled], .btn.bloqueado { opacity: .45; cursor: not-allowed; }
 /* faixa que pisca quando chega pedido novo (devagar: 1 piscada a cada 1,3 s) */
@@ -243,6 +168,9 @@ table.tb { width: 100%; border-collapse: collapse; background: var(--surface); b
 .ped-h { color: var(--muted); font-weight: 600; font-size: .9rem; margin-top: 8px; }
 .warn { background: var(--bg); color: #FF8A80; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-weight: 600; }
 .badge.adic { background: #fff; color: #B3150F; margin-left: 6px; }
+#caixaWrap { position: fixed; inset: 0; z-index: 70; background: var(--bg); }
+#caixaWrap[hidden] { display: none; }
+#caixaFrame { width: 100%; height: 100%; border: 0; display: block; }
 .badge.teste { background: #7B4FD8; color: #fff; margin-left: 6px; }
 .btn.red { background: var(--brasa); color: #fff; }
 .cd-barra { display: flex; gap: 8px; margin: 10px 0; align-items: center; }
@@ -268,18 +196,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 .dlg { padding: 16px; }
 .dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 .dlg-head h2 { margin: 0; font-size: 1.15rem; font-weight: 700; }
-.dlg .tabs { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; margin: 6px 0 4px; padding-bottom: 4px; scrollbar-width: thin; }
-.dlg .tabs .tab { flex: none; }
 .sec { font-weight: 700; margin: 12px 0 2px; color: var(--ouro); }
-.mi { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: center; }
-.mi small { color: var(--muted); display: block; }
-.mi .ctl { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
-.mi select { flex: 1 1 140px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
-.stp { display: inline-flex; align-items: center; border: 2px solid var(--ouro); border-radius: 10px; overflow: hidden; }
-.stp button { width: 38px; height: 36px; border: 0; background: transparent; color: var(--ouro); font-size: 1.3rem; font-weight: 700; cursor: pointer; }
-.stp output { min-width: 26px; text-align: center; font-weight: 700; }
-.dlg-foot { position: sticky; bottom: 0; background: var(--surface); padding-top: 10px; margin-top: 8px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
-.dlg-foot input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
 #ticket { display: none; }
 @media print {
   @page { size: 80mm auto; margin: 3mm; }
@@ -309,7 +226,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 19</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 20</p>
     <p class="credito" style="color:var(--muted);margin:4px 0 0">Desenvolvido por Cristiano Muniz Pessoa</p>
   </form>
 </section>
@@ -342,6 +259,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button type="button" class="btn small ghost" id="alertaOk" style="background:#fff;color:#111;border-color:#fff">Ciente</button>
   </div>
   <main id="list" aria-live="polite"></main>
+  <div id="caixaWrap" hidden><iframe id="caixaFrame" title="Pedido do caixa"></iframe></div>
   <button class="fab" id="novoBtn" type="button" hidden aria-label="Lançar um novo pedido (balcão, mesa ou viagem)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo pedido
   </button>
@@ -411,55 +329,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn green" id="payOk" type="button" disabled>Confirmar pagamento</button>
   </div>
 </dialog>
-
-<dialog id="addDlg" aria-labelledby="addTitle">
-  <div class="dlg">
-    <div class="dlg-head">
-      <h2 id="addTitle">Adicionar itens</h2>
-      <button class="btn ghost small" id="addClose" type="button">Fechar</button>
-    </div>
-    <div class="passos" id="novoPassos">
-      <button type="button" id="passo1Btn" class="tab" aria-pressed="true">1 · Itens</button>
-      <button type="button" id="passo2Btn" class="tab" aria-pressed="false">2 · Cliente e pagamento</button>
-    </div>
-    <div class="dlg-corpo">
-    <div id="novoCampos" hidden>
-      <div class="novo-sec">Tipo do pedido</div>
-      <div class="novo-tipos" id="novoTipos" role="group" aria-label="Tipo do pedido"></div>
-      <div class="qr-campos">
-        <div class="campo-s"><label for="novoNome">Nome do cliente</label><input id="novoNome" maxlength="40" autocomplete="off" placeholder="Para chamar quando ficar pronto"></div>
-        <div class="campo-s" id="novoMesaCampo" hidden><label for="novoMesa">Número da mesa</label><input id="novoMesa" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Ex.: 5"></div>
-        <div class="campo-s" id="novoTelCampo" hidden><label for="novoTel">WhatsApp do cliente (opcional)</label><input id="novoTel" type="tel" inputmode="tel" maxlength="20" autocomplete="off" placeholder="(62) 9 9999-9999"></div>
-      </div>
-      <div class="novo-sec">Pagamento</div>
-      <div class="pay-opts" id="novoPay"></div>
-          </div>
-    <div class="dlg-itens">
-    <div class="dlg-topo">
-    <div class="busca-add" role="search">
-      <label class="sr" for="addBusca">Buscar item para adicionar</label>
-      <div class="campo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="addBusca" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Buscar item: picanha, suco, caldo, meia...">
-      </div>
-      <button id="addBuscaLimpar" type="button" hidden>Limpar</button>
-    </div>
-    <div class="tabs" id="addTabs"></div>
-    </div>
-    <div id="addMenu"></div>
-    </div>
-    <div class="dlg-foot">
-      <input id="addObs" maxlength="240" placeholder="Observação (opcional)" aria-label="Observação do adicional">
-      <div class="tot"><span id="addTotLabel">Total do adicional</span><span id="addTotal">R$ 0,00</span></div>
-      <p class="hora" id="addTaxaTxt" hidden></p>
-      <p class="err" id="addErr" role="alert"></p>
-      <button class="btn gold" id="addNext" type="button">Continuar</button>
-      <button class="btn green" id="addSend" type="button">Enviar adicional</button>
-    </div>
-    </div>
-  </div>
-</dialog>
-
 <div id="ticket" aria-hidden="true"></div>
 <div id="qrPrint" aria-hidden="true"></div>
 
@@ -515,7 +384,6 @@ const TEL_RE = /\s*\[tel:(\d{10,15})\]\s*/i;
 const telDe = (o) => { const m = (o.observacoes || "").match(TEL_RE); return m ? m[1] : ""; };
 const ehTeste = (o) => /\[teste\]/i.test(o.observacoes || "");   /* pedido feito pelo "Acesso de teste" do cardápio */
 const obsTxt = (o) => (o.observacoes || "").replace(TEL_RE, " ").replace(/\s*\[teste\]\s*/ig, " ").replace(/^\s*ADICIONAL\s*(—\s*)?/i, "").trim();
-const normTel = (s) => { const d = String(s || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) return "55" + d; if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d; return ""; };
 const fmtTel = (t) => { const d = String(t).replace(/^55/, ""); return d.length === 11 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7) : d.length === 10 ? "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6) : t; };
 const msgBloqueio = (n) => "A conta só poderá ser fechada mediante a entrega " + (n > 1 ? "dos pedidos." : "do pedido.");
 function contaMesa(o) {
@@ -568,7 +436,6 @@ function passaFiltro(o, f) {
 const ehMesaNum = (m) => /^\d+$/.test(String(m == null ? "" : m));
 const MESA_ADEFINIR = "A definir";   /* cliente que pediu pelo link e ainda não escolheu a mesa */
 const localDe = (mesa) => !mesa ? "Retirada" : (ehMesaNum(mesa) ? "Mesa " + mesa : (mesa === MESA_ADEFINIR ? "Mesa a definir" : mesa));
-const TAXA_EMBALAGEM = 2;   /* taxa de embalagem do pedido para viagem, lançado pelo caixa */
 let silencioAte = 0;        /* depois que o caixa lança um pedido, não apita para o próprio pedido */
 const soBebida = (o) => { const p = partesOf(o); return p.length > 0 && p.every(x => x.setor === "bebidas"); };
 const partesDoSetor = (o, st) => partesOf(o).filter(p => p.setor === st);
@@ -648,7 +515,7 @@ async function api(path, opts = {}, retry = true) {
   return r;
 }
 function logout() {
-  pararAlerta();
+  pararAlerta(); fecharCaixa();
   const era = session;
   saveSession(null); clearInterval(timer); clearInterval(indispTimer); seen = null; orders = [];
   /* avisa o Supabase para encerrar este login também no servidor (assim ele não é renovado por outra aba) */
@@ -1479,235 +1346,38 @@ function printConta(c) {
 $("payOk").onclick = fecharConta;
 $("payClose").onclick = () => $("payDlg").close();
 
-/* ============ ADICIONAR ITENS A UM PEDIDO (feito pelo atendente) ============ */
+/* ============ PEDIDO DO CAIXA = O PRÓPRIO CARDÁPIO ============ */
+/* "Novo pedido" e "Adicionar itens" abrem o MESMO cardápio do cliente (index.html) numa janela interna, já como caixa.
+   Só existe um modelo de pedido: o do cardápio. A janela recebe o login do painel e confere no Supabase. */
 const allItems = {};
 MENU.forEach(c => c.secoes.forEach(s => s.itens.forEach(i => { i.setor = i.setor || c.setor; allItems[i.id] = i; })));
-const AD = { o: null, tab: MENU[0].id, sel: {}, esp: {}, cart: {}, q: "", modo: "adicional", tipo: "balcao", pay: "", passo: 1 };
-const keyOf = (id, o, e) => id + "|" + o + "|" + (e === null || e === undefined ? "" : e);
-const parseKey = (k) => { const [id, o, e] = k.split("|"); return { id, o: +o, e: e === "" || e === undefined ? null : +e }; };
-
-function openAdd(o) {
-  AD.o = o; AD.modo = "adicional"; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
-  $("addDlg").classList.remove("novo", "passo1", "passo2"); $("novoCampos").hidden = true; $("addTotLabel").textContent = "Total do adicional"; $("addSend").textContent = "Enviar adicional";
-  $("addBusca").value = ""; $("addBuscaLimpar").hidden = true;
-  $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
-  $("addTitle").textContent = "Adicionar itens — Pedido #" + nPed(o) + " · " + localDe(o.mesa) + " · " + o.cliente;
-  renderAdd(); $("addDlg").showModal();
-  setTimeout(() => { try { $("addBusca").focus(); } catch (e) {} }, 50);   /* já pronto para digitar a busca */
-}
-/* ---- Novo pedido lançado pelo caixa (balcão, mesa ou viagem) ---- */
-const FORMAS_NOVO = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheiro", "Misto"];
-const estreito = () => !!(window.matchMedia && window.matchMedia("(max-width: 859px)").matches);   /* celular */
-function setPasso(n) {
-  AD.passo = n; const dlg = $("addDlg");
-  dlg.classList.toggle("passo1", n === 1); dlg.classList.toggle("passo2", n === 2);
-  $("passo1Btn").setAttribute("aria-pressed", String(n === 1)); $("passo2Btn").setAttribute("aria-pressed", String(n === 2));
-  if (n === 2 && estreito()) setTimeout(() => { try { if (!$("novoNome").value) $("novoNome").focus(); } catch (e) {} }, 80);
-}
-function openNovo() {
-  AD.o = null; AD.modo = "novo"; AD.tipo = "balcao"; AD.pay = ""; AD.tab = MENU[0].id; AD.sel = {}; AD.esp = {}; AD.cart = {}; AD.q = "";
-  $("addBusca").value = ""; $("addBuscaLimpar").hidden = true; $("addObs").value = ""; $("addErr").textContent = ""; $("addSend").disabled = false;
-  $("novoNome").value = ""; $("novoMesa").value = ""; $("novoTel").value = "";
-  $("addDlg").classList.add("novo"); setPasso(1); $("addMenu").scrollTop = 0; $("addTitle").textContent = "Novo pedido"; $("novoCampos").hidden = false; $("addTotLabel").textContent = "Total do pedido"; $("addSend").textContent = "Enviar pedido";
-  renderNovo(); renderAdd(); $("addDlg").showModal();
-  setTimeout(() => { try { $("novoNome").focus(); } catch (e) {} }, 50);
-}
-function renderNovo() {
-  const box = $("novoTipos"); box.innerHTML = "";
-  [["balcao", "Balcão (comer aqui)"], ["mesa", "Mesa"], ["viagem", "Viagem (levar)"]].forEach(([k, rot]) => {
-    const b = mk("button", "tab", rot); b.type = "button"; b.setAttribute("aria-pressed", String(AD.tipo === k));
-    b.onclick = () => { AD.tipo = k; if (k === "viagem" && AD.pay === "depois") AD.pay = ""; if (k === "mesa" && !AD.pay) AD.pay = "depois"; renderNovo(); renderAdd(); if (k === "mesa") $("novoMesa").focus(); };
-    box.appendChild(b);
-  });
-  $("novoMesaCampo").hidden = AD.tipo !== "mesa";
-  $("novoTelCampo").hidden = AD.tipo !== "viagem";
-  const pay = $("novoPay"); pay.innerHTML = "";
-  (AD.tipo === "viagem" ? [] : [["depois", "Pagar depois (conta aberta)"]]).concat(FORMAS_NOVO.map(f => [f, f])).forEach(([v, rot]) => {
-    const b = mk("button", "btn ghost", rot); b.type = "button"; b.setAttribute("aria-pressed", String(AD.pay === v));
-    b.onclick = () => { AD.pay = v; renderNovo(); }; pay.appendChild(b);
-  });
-}
-function addChange(key, d) {
-  AD.cart[key] = Math.max(0, (AD.cart[key] || 0) + d);
-  if (!AD.cart[key]) delete AD.cart[key];
-  renderAdd();
-}
-function addLinhas() {
-  return Object.entries(AD.cart).map(([k, q]) => {
-    const { id, o, e } = parseKey(k); const it = allItems[id];
-    const d = []; if (it.opcoes) d.push(it.opcoes[o].nome); if (e !== null) d.push("espeto: " + TRAD[e]);
-    return { qtd: q, nome: it.nome, detalhe: d.join(", "), subtotal: q * priceOf(it, o), partes: partesDe(it, o, e, q) };
-  });
-}
-/* ---- busca de itens: ignora acentos e maiúsculas; todas as palavras digitadas precisam aparecer ---- */
 const semAcento = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const BUSCA_EXTRA = { jantinhas: "jantinha jantinhas prato refeicao", espetinhos: "espeto espetos espetinho espetinhos churrasco", porcoes: "porcao porcoes petisco", caldos: "caldo caldos sopa", bebidas: "bebida bebidas" };
-function resultadosBusca(q) {
-  const termos = semAcento(q).split(/\s+/).filter(Boolean), out = [];
-  MENU.forEach(c => {
-    const grupos = [];
-    c.secoes.forEach(sec => {
-      const itens = sec.itens.filter(it => !itemIndisp(it) && termos.every(t => semAcento([it.nome, it.desc, c.nome, sec.titulo, BUSCA_EXTRA[c.id], (it.opcoes || []).map(o => o.nome).join(" ")].join(" ")).includes(t)));
-      if (itens.length) grupos.push({ titulo: sec.titulo, itens });
-    });
-    if (grupos.length) out.push({ cat: c, grupos });
-  });
-  return out;
+const CAIXA = { adicional: null };
+const origemCaixa = () => location.protocol === "file:" ? "*" : location.origin;
+function abrirCaixa(adicional) {
+  CAIXA.adicional = adicional || null;
+  $("caixaFrame").src = "index.html?balcao=1" + (adicional ? "&adicional=1" : "");
+  $("caixaWrap").hidden = false; document.body.style.overflow = "hidden";
 }
-const espetoEscAdd = (item) => { const c = AD.esp[item.id] ?? 0; return espetoLivre(c) ? c : (espetosLivres()[0] ?? 0); };
-const chaveAdd = (item) => keyOf(item.id, AD.sel[item.id] || 0, item.espeto ? espetoEscAdd(item) : null);
-function stpAdd(key, qty, nome) {
-  const st = mk("div", "stp");
-  const m = mk("button", "", "−"); m.type = "button"; m.setAttribute("aria-label", "Remover um " + nome); m.onclick = () => addChange(key, -1);
-  const pl = mk("button", "", "+"); pl.type = "button"; pl.setAttribute("aria-label", "Adicionar um " + nome); pl.onclick = () => addChange(key, 1);
-  st.append(m, mk("output", "", qty), pl); return st;
-}
-function linhaAdd(item) {
-  const sel = AD.sel[item.id] || 0, esp = item.espeto ? espetoEscAdd(item) : null;
-  const key = chaveAdd(item);
-  const linhas = item.espeto ? Object.entries(AD.cart).filter(([k]) => k.startsWith(item.id + "|")) : [];
-  const row = mk("div", "mi");
-  const info = mk("div", "", item.nome); info.appendChild(mk("small", "", brl.format(priceOf(item, sel))));
-  row.appendChild(info);
-  if (item.espeto) {
-    /* cada espeto escolhido vira uma linha própria: dá para pedir várias jantinhas com espetos diferentes */
-    const b = mk("button", "btn gold small", linhas.length ? "Adicionar outra" : "Adicionar"); b.type = "button";
-    b.setAttribute("aria-label", "Adicionar " + item.nome); b.onclick = () => addChange(key, 1); row.appendChild(b);
-  } else row.appendChild(stpAdd(key, AD.cart[key] || 0, item.nome));
-  if (item.opcoes || item.espeto) {
-    const ctl = mk("div", "ctl");
-    if (item.opcoes) {
-      const se = document.createElement("select"); se.setAttribute("aria-label", "Tamanho de " + item.nome);
-      item.opcoes.forEach((op, i) => { const o = mk("option", "", op.nome + " · " + brl.format(op.preco)); o.value = i; if (i === sel) o.selected = true; se.appendChild(o); });
-      se.onchange = () => { AD.sel[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
-    }
-    if (item.espeto) {
-      const se = document.createElement("select"); se.setAttribute("aria-label", "Espeto de " + item.nome);
-      TRAD.forEach((n, i) => { if (!espetoLivre(i)) return; const o = mk("option", "", "Espeto: " + n); o.value = i; if (i === esp) o.selected = true; se.appendChild(o); });   /* só os espetos que tem hoje */
-      se.onchange = () => { AD.esp[item.id] = +se.value; renderAdd(); }; ctl.appendChild(se);
-    }
-    row.appendChild(ctl);
+function fecharCaixa() { $("caixaWrap").hidden = true; $("caixaFrame").src = "about:blank"; document.body.style.overflow = ""; }
+function openAdd(o) { abrirCaixa({ cliente: o.cliente, mesa: o.mesa || null, pagamento: o.pagamento || null, numero: nPed(o), local: localDe(o.mesa) }); }
+window.addEventListener("message", async (ev) => {
+  const f = $("caixaFrame");
+  if (!f || ev.source !== f.contentWindow) return;                                  /* só a janela do caixa que nós abrimos */
+  if (location.protocol !== "file:" && ev.origin !== location.origin) return;
+  const m = ev.data; if (!m || m.jp !== "balcao") return;
+  if (m.tipo === "pronto") {
+    try { await api("/auth/v1/user"); } catch (e) {}                                   /* renova o login se estiver vencendo */
+    if (!session) return;
+    ev.source.postMessage({ jp: "balcao", tipo: "sessao", access_token: session.access_token, adicional: CAIXA.adicional }, origemCaixa());
+  } else if (m.tipo === "fechar") fecharCaixa();
+  else if (m.tipo === "enviado") {
+    fecharCaixa();
+    if (m.adicional) avisar("Adicional enviado ao pedido #" + m.numero + ".");
+    else { silencioAte = Date.now() + 8000; avisar("Pedido de " + m.cliente + " enviado" + (m.pagamento ? " (pago em " + m.pagamento + ")" : "") + "."); }
+    load();
   }
-  if (linhas.length) {
-    const box = mk("div", "unids"); box.appendChild(mk("div", "t", "No pedido:"));
-    linhas.forEach(([k, q]) => {
-      const { o, e } = parseKey(k), ln = mk("div", "unid");
-      const txt = (item.opcoes ? item.opcoes[o].nome + " · " : "") + (e !== null && TRAD[e] ? TRAD[e] : "");
-      ln.append(mk("span", "", txt), stpAdd(k, q, item.nome + " " + txt)); box.appendChild(ln);
-    });
-    row.appendChild(box);
-  }
-  return row;
-}
-function limparIndispAdd() {
-  const fora = [];
-  Object.keys(AD.cart).forEach(k => {
-    const { id, e } = parseKey(k), it = allItems[id]; if (!it) return;
-    if (itemIndisp(it)) { fora.push(it.nome); delete AD.cart[k]; }
-    else if (it.espeto && e !== null && TRAD[e] && !espetoLivre(e)) { fora.push(it.nome + " com " + TRAD[e]); delete AD.cart[k]; }
-  });
-  if (fora.length) avisar("Ficou indisponível e saiu do pedido: " + fora.join(", ") + ".", true);
-}
-function renderAdd() {
-  limparIndispAdd();
-  const rolagem = $("addMenu").scrollTop;
-  const busca = AD.q.trim();
-  const tabs = $("addTabs"); tabs.innerHTML = ""; tabs.hidden = !!busca;
-  MENU.forEach(c => {
-    const b = mk("button", "tab", c.nome); b.type = "button"; b.setAttribute("aria-pressed", String(c.id === AD.tab));
-    b.onclick = () => { AD.tab = c.id; renderAdd(); };
-    tabs.appendChild(b);
-  });
-  const box = $("addMenu"); box.innerHTML = "";
-  if (busca) {
-    const res = resultadosBusca(busca);
-    const total = res.reduce((a, r) => a + r.grupos.reduce((b, g) => b + g.itens.length, 0), 0);
-    if (!total) box.appendChild(mk("p", "empty", "Nenhum item encontrado para “" + busca + "”. Tente outra palavra."));
-    else {
-      box.appendChild(mk("p", "add-info", total + (total > 1 ? " itens encontrados" : " item encontrado") + (total === 1 ? " — aperte Enter para adicionar 1" : "")));
-      res.forEach(r => r.grupos.forEach(g => {
-        box.appendChild(mk("div", "sec", r.cat.nome + (g.titulo !== r.cat.nome ? " · " + g.titulo : "")));
-        g.itens.forEach(item => box.appendChild(linhaAdd(item)));
-      }));
-    }
-  } else {
-    const cat = MENU.find(c => c.id === AD.tab);
-    cat.secoes.forEach(sec => {
-      box.appendChild(mk("div", "sec", sec.titulo));
-      sec.itens.forEach(item => { if (!itemIndisp(item)) box.appendChild(linhaAdd(item)); });
-    });
-  }
-  $("addMenu").scrollTop = rolagem;
-  const nItens = addLinhas().reduce((a, l) => a + l.qtd, 0);
-  $("passo1Btn").textContent = "1 · Itens" + (nItens ? " (" + nItens + ")" : "");
-  const taxa = (AD.modo === "novo" && AD.tipo === "viagem") ? TAXA_EMBALAGEM : 0;
-  $("addTotal").textContent = brl.format(addLinhas().reduce((a, l) => a + l.subtotal, 0) + taxa);
-  $("addTaxaTxt").hidden = !taxa; $("addTaxaTxt").textContent = "Inclui a taxa de embalagem de " + brl.format(taxa) + ".";
-}
-$("addBusca").addEventListener("input", () => { AD.q = $("addBusca").value; $("addBuscaLimpar").hidden = !AD.q; renderAdd(); });
-$("addBuscaLimpar").onclick = () => { $("addBusca").value = ""; AD.q = ""; $("addBuscaLimpar").hidden = true; renderAdd(); $("addBusca").focus(); };
-$("addBusca").addEventListener("keydown", (e) => {
-  if (e.key !== "Enter") return;
-  e.preventDefault();
-  /* com um único resultado, Enter já adiciona 1 (busca rápida pelo teclado) */
-  const itens = resultadosBusca(AD.q.trim()).flatMap(r => r.grupos.flatMap(g => g.itens));
-  if (itens.length === 1) addChange(chaveAdd(itens[0]), 1);
 });
-async function sendNovo(L) {
-  const err = (t) => { $("addErr").textContent = t; };
-  const nome = $("novoNome").value.trim();
-  if (!nome) { err("Informe o nome do cliente, para chamar quando o pedido ficar pronto."); if (estreito()) setPasso(2); $("novoNome").focus(); return; }
-  let mesa = null;
-  if (AD.tipo === "balcao") mesa = "Balcão";
-  if (AD.tipo === "mesa") { mesa = $("novoMesa").value.trim(); if (!ehMesaNum(mesa)) { err("Informe o número da mesa."); if (estreito()) setPasso(2); $("novoMesa").focus(); return; } }
-  if (!L.length) { err("Escolha pelo menos um item."); if (estreito()) setPasso(1); return; }
-  if (!AD.pay) { err(AD.tipo === "viagem" ? "Escolha a forma de pagamento." : "Escolha como o cliente vai pagar, ou “Pagar depois”."); return; }
-  let tel = "";
-  if (AD.tipo === "viagem" && $("novoTel").value.trim()) {
-    tel = normTel($("novoTel").value);
-    if (!tel) { err("Confira o número do WhatsApp (com DDD) ou deixe em branco."); if (estreito()) setPasso(2); $("novoTel").focus(); return; }
-  }
-  const taxa = AD.tipo === "viagem" ? TAXA_EMBALAGEM : 0, obs = [$("addObs").value.trim(), tel ? "[tel:" + tel + "]" : ""].filter(Boolean).join(" ");
-  const body = { cliente: nome, mesa, pagamento: AD.pay === "depois" ? null : AD.pay, observacoes: obs || null, itens: L, taxa, total: L.reduce((a, l) => a + l.subtotal, 0) + taxa };
-  const h = { apikey: CFG.key, "Content-Type": "application/json", Prefer: "return=minimal" };
-  if (CFG.key.startsWith("eyJ")) h.Authorization = "Bearer " + CFG.key;
-  $("addSend").disabled = true; err("");
-  try {
-    const r = await fetch(CFG.url + "/rest/v1/pedidos", { method: "POST", headers: h, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error("falha");
-    silencioAte = Date.now() + 8000;
-    $("addDlg").close();
-    avisar("Pedido de " + nome + " enviado" + (body.pagamento ? " (pago em " + body.pagamento + ")" : "") + ".");
-    await load();
-  } catch (e) {
-    err("Não foi possível enviar o pedido. Confira a conexão e tente de novo.");
-    $("addSend").disabled = false;
-  }
-}
-async function sendAdd() {
-  const L = addLinhas();
-  if (AD.modo === "novo") return sendNovo(L);
-  if (!L.length) { $("addErr").textContent = "Escolha pelo menos um item."; return; }
-  const o = AD.o, obs = $("addObs").value.trim();
-  const body = { cliente: o.cliente, mesa: o.mesa || null, pagamento: o.mesa ? null : (o.pagamento || null),
-    observacoes: "ADICIONAL" + (obs ? " — " + obs : ""), itens: L, taxa: 0, total: L.reduce((a, l) => a + l.subtotal, 0) };
-  /* grava como pedido novo (mesma regra do cardápio do cliente) */
-  const h = { apikey: CFG.key, "Content-Type": "application/json", Prefer: "return=minimal" };
-  if (CFG.key.startsWith("eyJ")) h.Authorization = "Bearer " + CFG.key;
-  $("addSend").disabled = true; $("addErr").textContent = "";
-  try {
-    const r = await fetch(CFG.url + "/rest/v1/pedidos", { method: "POST", headers: h, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error("falha");
-    $("addDlg").close();
-    avisar("Adicional enviado ao pedido #" + nPed(o) + ".");
-    await load();
-  } catch (e) {
-    $("addErr").textContent = "Não foi possível enviar o adicional. Confira a conexão e tente de novo.";
-    $("addSend").disabled = false;
-  }
-}
-$("addSend").onclick = sendAdd;
-$("addClose").onclick = () => $("addDlg").close();
 
 /* ============ CUPOM POR SETOR (sem preços) ============ */
 function printSetor(o, st) {
@@ -1925,13 +1595,7 @@ $("refreshBtn").onclick = async () => {
   setTimeout(() => b.classList.remove("girando"), 900);
 };
 $("ajBtn").onclick = () => $("ajDlg").showModal();
-$("novoBtn").onclick = openNovo;
-$("passo1Btn").onclick = () => setPasso(1);
-$("passo2Btn").onclick = () => setPasso(2);
-$("addNext").onclick = () => {
-  if (!addLinhas().length) { $("addErr").textContent = "Escolha pelo menos um item."; return; }
-  $("addErr").textContent = ""; setPasso(2);
-};
+$("novoBtn").onclick = () => abrirCaixa();
 $("ajFechar").onclick = () => $("ajDlg").close();
 $("ajDlg").addEventListener("click", (e) => { if (e.target === $("ajDlg")) $("ajDlg").close(); });
 $("logoutBtn").onclick = logout;
