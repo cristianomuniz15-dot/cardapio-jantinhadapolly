@@ -45,15 +45,10 @@ header.top .acoes { grid-area: acoes; display: flex; align-items: center; gap: 1
 .logo-top { height: 56px; width: auto; display: block; -webkit-mask-image: radial-gradient(ellipse 72% 88% at 50% 50%, #000 48%, transparent 100%); mask-image: radial-gradient(ellipse 72% 88% at 50% 50%, #000 48%, transparent 100%); }
 .btn-grande { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 22px; border: 0; border-radius: 14px; font-weight: 700; font-size: 1.1rem; cursor: pointer; white-space: nowrap; }
 .btn-grande svg { width: 22px; height: 22px; flex: none; }
-.btn-grande.ouro { background: var(--ouro); color: #1E1500; flex-direction: column; gap: 0; padding: 6px 22px; }
-.btn-grande.ouro .linha { display: flex; align-items: center; gap: 8px; }
-.btn-grande.ouro small { font-size: .72rem; font-weight: 600; opacity: .75; min-height: 1em; }
+.hora-atu { font-size: .78rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .btn-grande.vermelho { background: var(--brasa); color: #fff; }
 .btn-aj { width: 52px; min-height: 52px; padding: 0; border-radius: 14px; background: transparent; border: 2px solid var(--line); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .btn-aj svg { width: 24px; height: 24px; }
-.girando svg { animation: giro .8s linear; }
-@keyframes giro { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .girando svg { animation: none; } }
 header.top > * { min-width: 0; }
 @media (max-width: 1499px) {
   header.top { grid-template-columns: 1fr auto; grid-template-areas: "marca acoes" "tabs tabs"; }
@@ -175,6 +170,7 @@ table.tb { width: 100%; border-collapse: collapse; background: var(--surface); b
 .btn.red { background: var(--brasa); color: #fff; }
 .cd-barra { display: flex; gap: 8px; margin: 10px 0; align-items: center; }
 .cd-barra input { flex: 1; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px; background: var(--bg); color: inherit; font-size: 1rem; }
+.cd-cats { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
 .cd-cat { margin: 16px 0 4px; color: var(--ouro); font-family: var(--font-display); font-style: italic; font-size: 1.4rem; }
 .cd-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .cd-item small { display: block; color: var(--muted); }
@@ -226,7 +222,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     <button class="btn main" type="submit">Entrar</button>
     <button class="btn ghost" id="trocarSenhaLogin" type="button">Trocar senha</button>
     <p class="err" id="loginErr" role="alert"></p>
-    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 12/10/2026 · 20</p>
+    <p class="versao-p" id="versaoPainel" style="color:var(--muted);font-size:.78rem;opacity:.7;margin:0">Versão 27/10/2026 · 21</p>
     <p class="credito" style="color:var(--muted);margin:4px 0 0">Desenvolvido por Cristiano Muniz Pessoa</p>
   </form>
 </section>
@@ -242,10 +238,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
       <button class="btn-aj" id="ajBtn" type="button" aria-label="Ajustes: som, voz e impressão" title="Ajustes: som, voz e impressão">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       </button>
-      <button class="btn-grande ouro" id="refreshBtn" type="button" aria-label="Atualizar os pedidos agora">
-        <span class="linha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg><span>Atualizar</span></span>
-        <small id="horaAtu"></small>
-      </button>
+      <small class="hora-atu" id="horaAtu" title="Os pedidos se atualizam sozinhos a cada 6 segundos"></small>
       <button class="btn-grande vermelho" id="logoutBtn" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Sair
       </button>
@@ -350,6 +343,26 @@ const DONOS = ["humberto", "pollyanna"];
 const LOGINS_COMPARTILHADOS = ["churrasqueira", "cozinha"];
 /* O dia de vendas começa a esta hora (assim os pedidos depois da meia-noite contam no dia anterior). */
 const HORA_VIRADA = 5;
+/* Hora certa de Brasília, sem depender do relógio nem do fuso do computador:
+   pegamos a hora do servidor do site (cabeçalho "Date") e mostramos tudo no fuso de Brasília. */
+const TZ = "America/Sao_Paulo";
+let desvioRelogio = 0;
+const agoraCerto = () => new Date(Date.now() + desvioRelogio);
+const dataBR = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date(d));   /* "2026-10-27" */
+const instanteBR = (y, m, d, h) => new Date(Date.UTC(y, m, d, h + 3));   /* Brasília = UTC-3 (sem horário de verão desde 2019); m começa em 0 */
+async function acertarRelogio() {
+  if (location.protocol === "file:") return;
+  try {
+    const t0 = Date.now();
+    const r = await fetch("cardapio-dados.js?hora=" + t0, { method: "HEAD", cache: "no-store" });
+    const t1 = Date.now(), srv = Date.parse(r.headers.get("Date") || "");
+    if (!srv) return;
+    const antes = desvioRelogio;
+    desvioRelogio = srv + 500 - (t0 + t1) / 2;   /* o "Date" vem em segundos inteiros: +0,5 s; desconta o tempo de ida e volta */
+    if (Math.abs(desvioRelogio - antes) > 60000) { try { render(); } catch (e) {} }
+  } catch (e) {}
+}
+acertarRelogio(); setInterval(acertarRelogio, 15 * 60000);
 const SETORES = { churrasqueira: "Churrasqueira", cozinha: "Cozinha", bebidas: "Bebidas" };
 /* O perfil vem do login: e-mail churrasqueira@... ou cozinha@... abre a tela do setor;
    qualquer outro e-mail (ex.: caixa@...) abre a tela completa do caixa.
@@ -379,7 +392,7 @@ function partesOf(o) {
   return out;
 }
 const isAdic = (o) => /^ADICIONAL/i.test(o.observacoes || "");
-/* o WhatsApp do cliente (retirada/viagem) viaja dentro das observações, como [tel:5562999999999] */
+/* o WhatsApp do cliente (mesa, retirada ou viagem) viaja dentro das observações, como [tel:5562999999999] */
 const TEL_RE = /\s*\[tel:(\d{10,15})\]\s*/i;
 const telDe = (o) => { const m = (o.observacoes || "").match(TEL_RE); return m ? m[1] : ""; };
 const ehTeste = (o) => /\[teste\]/i.test(o.observacoes || "");   /* pedido feito pelo "Acesso de teste" do cardápio */
@@ -412,13 +425,13 @@ function contasAbertas() {
 const NUMDIA = new Map();
 const nPed = (o) => o.numdia || o.numero;
 function horaDia(o) {
-  const k = chaveDia(o.criado_em), hojeK = chaveDia(new Date().toISOString());
+  const k = chaveDia(o.criado_em), hojeK = chaveDia(agoraCerto());
   if (k === hojeK) return hora(o.criado_em);
-  const ontemK = chaveDia(new Date(Date.now() - 24 * 3600 * 1000).toISOString());
-  return hora(o.criado_em) + " · " + (k === ontemK ? "ontem" : new Date(o.criado_em).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }));
+  const ontemK = chaveDia(agoraCerto().getTime() - 24 * 3600 * 1000);
+  return hora(o.criado_em) + " · " + (k === ontemK ? "ontem" : new Date(o.criado_em).toLocaleDateString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit" }));
 }
 async function atualizarNumeracao() {
-  const ini = addDias(inicioDoDia(new Date()), -1).toISOString();   /* início do dia anterior: todos os pedidos dos dias exibidos */
+  const ini = addDias(inicioDoDia(agoraCerto()), -1).toISOString();   /* início do dia anterior: todos os pedidos dos dias exibidos */
   const r = await api("/rest/v1/pedidos?select=id,numero,criado_em&criado_em=gte." + encodeURIComponent(ini) + "&order=numero.asc&limit=1000");
   if (!r.ok) return;
   const lista = await r.json(), cont = new Map();
@@ -426,7 +439,7 @@ async function atualizarNumeracao() {
   lista.forEach(o => { const k = chaveDia(o.criado_em), n = (cont.get(k) || 0) + 1; cont.set(k, n); NUMDIA.set(o.id, n); });
 }
 /* "Entregues" e "Todos" mostram só o dia de hoje (zera todo dia). "Em andamento" e "Contas abertas" mostram tudo que ainda está pendente. */
-const ehHoje = (o) => chaveDia(o.criado_em) === chaveDia(new Date().toISOString());
+const ehHoje = (o) => chaveDia(o.criado_em) === chaveDia(agoraCerto());
 function passaFiltro(o, f) {
   if (f === "andamento") return ATIVOS.includes(o.status);
   if (f === "entregue") return o.status === "entregue" && ehHoje(o);
@@ -443,7 +456,7 @@ const doMeuSetor = (o) => VIEW === "todos" || partesDoSetor(o, VIEW).length > 0;
 
 const $ = (id) => document.getElementById(id);
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const hora = (d) => new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const hora = (d) => new Date(d).toLocaleTimeString("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 let avisoTimer = null;
 function avisar(txt, ruim, desfazer) {
   const el = $("status"); el.textContent = txt; el.classList.toggle("bad", !!ruim);
@@ -560,7 +573,7 @@ async function load() {
     if (meus.length) { beep(); if (voice) meus.forEach(speak); alertarNovos(meus); }
     seen = ids;
     if (autoPrint) orders.filter(o => o.status === "novo" && doMeuSetor(o) && !jaImpresso(o.id)).sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em)).forEach(queuePrint);
-    $("horaAtu").textContent = "Atualizado às " + hora(new Date());
+    $("horaAtu").textContent = "Atualizado às " + hora(agoraCerto());
     if ($("status").classList.contains("bad")) { $("status").textContent = ""; $("status").classList.remove("bad"); }
   } catch (e) {
     avisar("Sem conexão. Tentando de novo...", true);
@@ -581,7 +594,11 @@ async function setStatus(o, st) {
 function linkAviso(o) {
   const tel = telDe(o); if (!tel) return "";
   const nome = (o.cliente || "").trim().split(/\s+/)[0];
-  const txt = "Olá" + (nome ? ", " + nome : "") + "! Seu pedido #" + nPed(o) + " na " + NOME_LOJA + " está pronto e disponível para retirada. Pode vir buscar! 😊";
+  const fim = !o.mesa ? "está pronto e disponível para retirada. Pode vir buscar! 😊"
+    : o.mesa === "Balcão" ? "está pronto! Pode retirar no balcão. 😊"
+    : o.mesa === MESA_ADEFINIR ? "está pronto! Avise o atendente qual é a sua mesa. 😊"
+    : "está pronto e já vai para a mesa " + o.mesa + ". Bom apetite! 😊";
+  const txt = "Olá" + (nome ? ", " + nome : "") + "! Seu pedido #" + nPed(o) + " na " + NOME_LOJA + " " + fim;
   return "https://wa.me/" + tel + "?text=" + encodeURIComponent(txt);
 }
 async function marcarPronto(o) {
@@ -724,7 +741,7 @@ function printTicket(o) {
   line("c big", NOME_LOJA);
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
   if (ehTeste(o)) line("c big", "*** TESTE ***");
-  line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   line("b big", localDe(o.mesa).toUpperCase());
   line("", "Cliente: " + o.cliente);
@@ -802,31 +819,32 @@ const FORMAS_REL = ["Pix", "Cartão de débito", "Cartão de crédito", "Dinheir
 const ABERTA = "Conta aberta (ainda não paga)";
 const REL = { k: "hoje", de: "", ate: "", node: null, data: null, ts: 0, carregando: false };
 const PERIODOS = [["hoje", "Hoje"], ["custom", "Escolher datas"]];
-const fmtData = (d) => d.toLocaleDateString("pt-BR");
-const addDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const fmtData = (d) => d.toLocaleDateString("pt-BR", { timeZone: TZ });
+const addDias = (d, n) => new Date(new Date(d).getTime() + n * DIA_MS);   /* Brasília não tem horário de verão: um dia = 24 h */
 const n2 = (v) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-function inicioDoDia(d) { const x = new Date(d); x.setHours(HORA_VIRADA, 0, 0, 0); if (d < x) x.setDate(x.getDate() - 1); return x; }
+/* início do dia de vendas (HORA_VIRADA, horário de Brasília) que contém o instante d */
+function inicioDoDia(d) { const [y, m, dd] = chaveDia(d).split("-").map(Number); return instanteBR(y, m - 1, dd, HORA_VIRADA); }
 function periodoDe(k, de, ate) {
-  const hoje = inicioDoDia(new Date()), y = hoje.getFullYear(), m = hoje.getMonth();
-  const seg = addDias(hoje, -((hoje.getDay() + 6) % 7));   /* semana: segunda a domingo */
+  const hoje = inicioDoDia(agoraCerto()), [y, m1, d1] = chaveDia(hoje).split("-").map(Number), m = m1 - 1;
+  const seg = addDias(hoje, -((new Date(Date.UTC(y, m, d1)).getUTCDay() + 6) % 7));   /* semana: segunda a domingo */
   switch (k) {
     case "hoje": return [hoje, addDias(hoje, 1)];
     case "ontem": return [addDias(hoje, -1), hoje];
     case "semana": return [seg, addDias(seg, 7)];
     case "semanaPassada": return [addDias(seg, -7), seg];
-    case "mes": return [new Date(y, m, 1, HORA_VIRADA), new Date(y, m + 1, 1, HORA_VIRADA)];
-    case "mesPassado": return [new Date(y, m - 1, 1, HORA_VIRADA), new Date(y, m, 1, HORA_VIRADA)];
-    case "ano": return [new Date(y, 0, 1, HORA_VIRADA), new Date(y + 1, 0, 1, HORA_VIRADA)];
+    case "mes": return [instanteBR(y, m, 1, HORA_VIRADA), instanteBR(y, m + 1, 1, HORA_VIRADA)];
+    case "mesPassado": return [instanteBR(y, m - 1, 1, HORA_VIRADA), instanteBR(y, m, 1, HORA_VIRADA)];
+    case "ano": return [instanteBR(y, 0, 1, HORA_VIRADA), instanteBR(y + 1, 0, 1, HORA_VIRADA)];
     default: {
       const a = (de || "").split("-").map(Number), b = (ate || "").split("-").map(Number);
       if (a.length !== 3 || b.length !== 3 || a.some(isNaN) || b.some(isNaN)) return null;
-      return [new Date(a[0], a[1] - 1, a[2], HORA_VIRADA), new Date(b[0], b[1] - 1, b[2] + 1, HORA_VIRADA)];
+      return [instanteBR(a[0], a[1] - 1, a[2], HORA_VIRADA), instanteBR(b[0], b[1] - 1, b[2] + 1, HORA_VIRADA)];
     }
   }
 }
 function rotuloPeriodo(ini, fim) {
   const ult = addDias(fim, -1);
-  return fmtData(ini) === fmtData(ult) ? fmtData(ini) + " (" + ini.toLocaleDateString("pt-BR", { weekday: "long" }) + ")" : fmtData(ini) + " a " + fmtData(ult);
+  return fmtData(ini) === fmtData(ult) ? fmtData(ini) + " (" + ini.toLocaleDateString("pt-BR", { timeZone: TZ, weekday: "long" }) + ")" : fmtData(ini) + " a " + fmtData(ult);
 }
 /* Tipos para o relatório de quantidades (ligados ao cardápio pelo nome do item) */
 const GRUPOS = ["Jantinhas", "Espetos avulsos", "Porções", "Caldos", "Bebidas"];
@@ -854,7 +872,7 @@ async function buscarPedidos(ini, fim) {
   }
   return out;
 }
-const chaveDia = (iso) => { const d = new Date(new Date(iso).getTime() - HORA_VIRADA * 3600 * 1000); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+const chaveDia = (iso) => dataBR(new Date(iso).getTime() - HORA_VIRADA * 3600 * 1000);   /* dia de vendas no horário de Brasília */
 function resumir(rows, ini, fim) {
   const forma = new Map(), grupo = new Map(), qGrupo = {}, detalhe = new Map(); let total = 0, aberto = 0, churras = 0;
   const porMes = (fim - ini) > 62 * DIA_MS;
@@ -878,8 +896,8 @@ function resumir(rows, ini, fim) {
   const formas = nomes.filter(k => forma.has(k) || FORMAS_REL.slice(0, 4).includes(k)).map(k => ({ nome: k, valor: forma.has(k) ? forma.get(k).valor : 0, n: forma.has(k) ? forma.get(k).n : 0 }));
   const grupos = [...grupo.keys()].sort().map(k => {
     const [y, m, d] = k.split("-").map(Number); const g = grupo.get(k);
-    const rotulo = porMes ? new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-      : new Date(y, m - 1, d).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+    const rotulo = porMes ? new Date(Date.UTC(y, m - 1, 1, 12)).toLocaleDateString("pt-BR", { timeZone: TZ, month: "long", year: "numeric" })
+      : new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("pt-BR", { timeZone: TZ, weekday: "short", day: "2-digit", month: "2-digit" });
     return { rotulo, valor: g.valor, n: g.n, q: g.q };
   });
   const colunas = GRUPOS.concat(qGrupo["Outros"] ? ["Outros"] : []);
@@ -911,7 +929,7 @@ function tabela(cab, linhas) {
 }
 function pintarRelatorio() {
   const d = REL.data, info = $("relInfo"), body = $("relBody");
-  info.className = "rel-info"; info.textContent = "Período: " + d.rotulo + " · atualizado às " + hora(new Date());
+  info.className = "rel-info"; info.textContent = "Período: " + d.rotulo + " · atualizado às " + hora(agoraCerto());
   body.innerHTML = "";
   const kpis = mk("div", "kpis");
   [["Total vendido", brl.format(d.total), "main"], ["Recebido (contas pagas)", brl.format(d.total - d.aberto), ""], ["A receber (contas abertas)", brl.format(d.aberto), ""], ["Pedidos", String(d.pedidos), ""]].forEach(([t, v, c]) => {
@@ -974,9 +992,8 @@ function montarRelatorio() {
       REL.k = k; [...bar.children].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
       $("relCustom").hidden = k !== "custom";
       if (k === "custom") {
-        const iso = (x) => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
-        if (!$("relDe").value) $("relDe").value = iso(inicioDoDia(new Date()));
-        if (!$("relAte").value) $("relAte").value = iso(inicioDoDia(new Date()));
+        if (!$("relDe").value) $("relDe").value = chaveDia(agoraCerto());
+        if (!$("relAte").value) $("relAte").value = chaveDia(agoraCerto());
       }
       if (k !== "custom") carregarRelatorio();
     };
@@ -1014,7 +1031,7 @@ function baixarCSV() {
     .concat([[], [d.porMes ? "Mês" : "Dia", "Pedidos", "Valor (R$)"].concat(d.colunas)], d.grupos.map(g => [g.rotulo, g.n, v(g.valor)].concat(d.colunas.map(c => g.q[c] || 0))))
     .concat([[], ["Detalhe por item"], ["Tipo", "Item", "Quantidade"]], [].concat(...d.det.map(g => g.itens.map(i => [g.nome, i.nome, i.qtd]))));
   const csv = "\ufeff" + L.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(";")).join("\r\n");
-  const iso = (x) => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+  const iso = (x) => chaveDia(x);   /* data do dia de vendas, no horário de Brasília */
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   a.download = "vendas_" + iso(d.ini) + "_a_" + iso(addDias(d.fim, -1)) + ".csv";
@@ -1027,7 +1044,7 @@ function imprimirResumo() {
   const hr = () => t.appendChild(document.createElement("hr"));
   const row = (cls, a, b) => { const r = mk("div", "row " + cls); r.append(mk("span", "", a), mk("span", "", b)); t.appendChild(r); };
   line("c big", NOME_LOJA); line("c b", "RELATÓRIO DE VENDAS"); line("c", d.rotulo);
-  line("c", "Emitido " + new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  line("c", "Emitido " + agoraCerto().toLocaleString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   row("big", "TOTAL", brl.format(d.total));
   row("", "Recebido", brl.format(d.total - d.aberto));
@@ -1121,7 +1138,7 @@ function itemIndisp(it) {
   return false;
 }
 function diaOperacional() {   /* o dia "vira" às 5h, igual ao resto do painel */
-  const t = new Date(Date.now() - HORA_VIRADA * 3600 * 1000);
+  const t = new Date(agoraCerto().getTime() - HORA_VIRADA * 3600 * 1000);
   try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(t); } catch (e) { return t.toISOString().slice(0, 10); }
 }
 const usuarioAtual = () => ((session && session.user && session.user.email) || "").split("@")[0];
@@ -1159,7 +1176,7 @@ async function liberarTodosIndisp() {
     INDISP.ids = new Set(); renderTabs(); pintarCardapioDia(); avisar("Todos os itens foram liberados.", false);
   } catch (e) { avisar("Não foi possível salvar. Confira a conexão e tente de novo.", true); }
 }
-const CD = { node: null, q: "" };
+const CD = { node: null, q: "", cat: MENU[0].id };   /* cat = categoria aberta (Jantinhas, Espetinhos...) */
 function montarCardapioDia() {
   const n = mk("section", "rel");
   n.appendChild(mk("h2", "", "Cardápio do dia"));
@@ -1170,6 +1187,7 @@ function montarCardapioDia() {
   busca.oninput = () => { CD.q = busca.value; pintarCardapioDia(); };
   const lib = mk("button", "btn ghost small", "Liberar todos"); lib.type = "button"; lib.id = "cdLiberar"; lib.onclick = liberarTodosIndisp;
   barra.append(busca, lib); n.appendChild(barra);
+  const cats = mk("div", "cd-cats"); cats.id = "cdCats"; cats.setAttribute("role", "group"); cats.setAttribute("aria-label", "Categorias do cardápio"); n.appendChild(cats);
   const lista = mk("div", "cd-lista"); lista.id = "cdLista"; n.appendChild(lista);
   CD.node = n;
 }
@@ -1179,7 +1197,18 @@ function pintarCardapioDia() {
   $("cdLiberar").disabled = !INDISP.ids.size || !INDISP.ok;
   const lista = $("cdLista"); lista.innerHTML = "";
   const termos = semAcento(CD.q).split(/\s+/).filter(Boolean);
+  /* botões das categorias: mostra uma por vez; o número entre parênteses = itens indisponíveis nela */
+  const cats = $("cdCats"); cats.innerHTML = ""; cats.hidden = termos.length > 0;   /* buscando: procura em todas */
   MENU.forEach(c => {
+    const fora = c.secoes.reduce((a, sec) => a + sec.itens.filter(it => itemIndisp(it)).length, 0);
+    const b = mk("button", "tab", c.nome + (fora ? " (" + fora + ")" : "")); b.type = "button";
+    b.setAttribute("aria-pressed", String(c.id === CD.cat));
+    if (fora) b.title = fora + (fora > 1 ? " itens indisponíveis" : " item indisponível");
+    b.onclick = () => { CD.cat = c.id; pintarCardapioDia(); };
+    cats.appendChild(b);
+  });
+  MENU.forEach(c => {
+    if (!termos.length && c.id !== CD.cat) return;
     const achados = [];
     c.secoes.forEach(sec => sec.itens.forEach(it => { if (termos.every(t => semAcento(it.nome + " " + c.nome + " " + sec.titulo).includes(t))) achados.push([sec, it]); }));
     if (!achados.length) return;
@@ -1325,7 +1354,7 @@ function printConta(c) {
   hr();
   line("b big", localDe(c.mesa).toUpperCase());
   line("", "Cliente: " + c.cliente);
-  line("", new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  line("", agoraCerto().toLocaleString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   const m = new Map();
   c.pedidos.forEach(o => (o.itens || []).forEach(i => {
@@ -1387,7 +1416,7 @@ function printSetor(o, st) {
   line("c big", SETORES[st].toUpperCase());
   if (isAdic(o)) line("c big", "*** ADICIONAL ***");
   if (ehTeste(o)) line("c big", "*** TESTE ***");
-  line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+  line("c", "Pedido #" + nPed(o) + " — " + new Date(o.criado_em).toLocaleString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
   hr();
   line("b big", localDe(o.mesa).toUpperCase());
   line("", "Cliente: " + o.cliente);
@@ -1589,11 +1618,6 @@ $("loginForm").addEventListener("submit", async (e) => {
   }
   catch (err) { $("loginErr").textContent = err.message || "Não foi possível entrar. Verifique a conexão."; }
 });
-$("refreshBtn").onclick = async () => {
-  const b = $("refreshBtn"); b.classList.add("girando");
-  await load();
-  setTimeout(() => b.classList.remove("girando"), 900);
-};
 $("ajBtn").onclick = () => $("ajDlg").showModal();
 $("novoBtn").onclick = () => abrirCaixa();
 $("ajFechar").onclick = () => $("ajDlg").close();
